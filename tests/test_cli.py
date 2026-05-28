@@ -34,7 +34,7 @@ def test_cli_help(capsys):
 def test_cli_writes_trace_and_profile(tmp_path, capsys):
     input_file = tmp_path / "input.csv"
     policy_file = tmp_path / "policy.yaml"
-    output_dir = tmp_path / "outputs"
+    output_dir = tmp_path / "very_sensitive_output_directory"
 
     input_file.write_text(
         "name,email,phone,postcode,address\n"
@@ -160,7 +160,7 @@ def test_report_uses_file_names_not_full_paths(tmp_path):
     input_dir.mkdir()
     input_file = input_dir / "input.csv"
     policy_file = tmp_path / "policy.yaml"
-    output_dir = tmp_path / "outputs"
+    output_dir = tmp_path / "very_sensitive_output_directory"
 
     input_file.write_text("email\na@example.com\n", encoding="utf-8")
     policy_file.write_text(
@@ -191,3 +191,5 @@ categories:
     assert "input.csv" in report
     assert "policy.yaml" in report
     assert "very_sensitive_literal_directory" in trace
+    assert "very_sensitive_output_directory" not in report
+    assert "very_sensitive_output_directory" in trace

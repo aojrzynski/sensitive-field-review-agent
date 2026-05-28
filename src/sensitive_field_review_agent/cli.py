@@ -62,7 +62,7 @@ def _build_review_report(review_dict: dict, trace: dict) -> str:
         "## Inputs",
         f"- Input file: `{Path(trace['input_path']).name}`",
         f"- Policy file: `{Path(trace['policy_path']).name}`",
-        f"- Output directory: `{trace['output_directory']}`",
+        "- Output artifacts: generated in the selected output directory",
         f"- Row count: {review_dict['row_count']}",
         f"- Column count: {review_dict['column_count']}",
         "",

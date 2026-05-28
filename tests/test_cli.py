@@ -153,3 +153,41 @@ categories:
     trace_data = json.loads((output_dir / "sensitive_field_trace.json").read_text(encoding="utf-8"))
     assert trace_data["sheet"] == "Customers"
     assert trace_data["dataset_metadata"]["sheet_name"] == "Customers"
+
+
+def test_report_uses_file_names_not_full_paths(tmp_path):
+    input_dir = tmp_path / "very_sensitive_literal_directory"
+    input_dir.mkdir()
+    input_file = input_dir / "input.csv"
+    policy_file = tmp_path / "policy.yaml"
+    output_dir = tmp_path / "outputs"
+
+    input_file.write_text("email\na@example.com\n", encoding="utf-8")
+    policy_file.write_text(
+        """
+policy_name: test_policy
+review_levels:
+  high: {}
+  none: {}
+categories:
+  contact:
+    default_review_level: high
+    name_keywords: [email]
+""".strip(),
+        encoding="utf-8",
+    )
+
+    rc = main([
+        "--input", str(input_file),
+        "--policy", str(policy_file),
+        "--output-dir", str(output_dir),
+    ])
+    assert rc == 0
+
+    report = (output_dir / "sensitive_field_review_report.md").read_text(encoding="utf-8")
+    trace = (output_dir / "sensitive_field_trace.json").read_text(encoding="utf-8")
+
+    assert "very_sensitive_literal_directory" not in report
+    assert "input.csv" in report
+    assert "policy.yaml" in report
+    assert "very_sensitive_literal_directory" in trace

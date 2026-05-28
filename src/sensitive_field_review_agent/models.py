@@ -130,3 +130,34 @@ class DatasetSignals:
     row_count: int
     column_count: int
     fields: list[FieldSignalSet] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class FieldReviewEvidence:
+    signal_type: str
+    signal_name: str
+    summary: str
+
+
+@dataclass(slots=True)
+class FieldReviewResult:
+    column_name: str
+    suggested_policy_category: str | None
+    suggested_review_level: str
+    confidence: str
+    review_required: bool
+    evidence_summary: str
+    supporting_signals: list[FieldReviewEvidence] = field(default_factory=list)
+    profile_summary: dict = field(default_factory=dict)
+    reviewer_questions: list[str] = field(default_factory=list)
+    decision_authority_note: str = ""
+
+
+@dataclass(slots=True)
+class DatasetReviewResult:
+    row_count: int
+    column_count: int
+    policy_name: str
+    policy_version: str | None
+    authority_note: str | None
+    fields: list[FieldReviewResult] = field(default_factory=list)

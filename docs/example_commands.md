@@ -15,6 +15,9 @@ Expected artifacts:
 - `outputs/customers_sensitive_review/sensitive_field_trace.json`
 - `outputs/customers_sensitive_review/sensitive_field_profile.json`
 - `outputs/customers_sensitive_review/sensitive_field_signals.json`
+- `outputs/customers_sensitive_review/sensitive_field_results.json`
+- `outputs/customers_sensitive_review/sensitive_field_findings.csv`
+- `outputs/customers_sensitive_review/sensitive_field_review_report.md`
 
 Excel input can include an explicit sheet:
 

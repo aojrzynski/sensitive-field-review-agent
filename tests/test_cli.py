@@ -34,7 +34,7 @@ def test_cli_help(capsys):
 def test_cli_writes_trace_and_profile(tmp_path, capsys):
     input_file = tmp_path / "input.csv"
     policy_file = tmp_path / "policy.yaml"
-    output_dir = tmp_path / "outputs"
+    output_dir = tmp_path / "very_sensitive_output_directory"
 
     input_file.write_text(
         "name,email,phone,postcode,address\n"
@@ -70,7 +70,7 @@ redaction:
 
     assert rc == 0
     captured = capsys.readouterr()
-    assert "Deterministic safe field profile and field signals generated" in captured.out
+    assert "Deterministic safe profile, signals, and review artifacts generated" in captured.out
 
     trace_file = output_dir / "sensitive_field_trace.json"
     profile_file = output_dir / "sensitive_field_profile.json"
@@ -80,7 +80,7 @@ redaction:
     assert signals_file.exists()
 
     trace_data = json.loads(trace_file.read_text(encoding="utf-8"))
-    assert trace_data["status"] == "signals_generated"
+    assert trace_data["status"] == "review_artifacts_generated"
     assert trace_data["llm_review_requested"] is True
     assert trace_data["dataset_metadata"]["row_count"] == 2
     assert trace_data["dataset_metadata"]["column_count"] == 5
@@ -88,6 +88,9 @@ redaction:
     assert trace_data["policy_metadata"]["category_names"] == ["contact"]
     assert "field_profile_path" in trace_data["profile_artifacts"]
     assert "field_signals_path" in trace_data["signal_artifacts"]
+    assert "results_path" in trace_data["review_artifacts"]
+    assert "findings_csv_path" in trace_data["review_artifacts"]
+    assert "review_report_path" in trace_data["review_artifacts"]
 
     profile_data = json.loads(profile_file.read_text(encoding="utf-8"))
     profile_field_names = [field["column_name"] for field in profile_data["field_profiles"]]
@@ -95,9 +98,15 @@ redaction:
 
     rendered_profile = profile_file.read_text(encoding="utf-8")
     rendered_signals = signals_file.read_text(encoding="utf-8")
+    rendered_results = (output_dir / "sensitive_field_results.json").read_text(encoding="utf-8")
+    rendered_findings = (output_dir / "sensitive_field_findings.csv").read_text(encoding="utf-8")
+    rendered_report = (output_dir / "sensitive_field_review_report.md").read_text(encoding="utf-8")
     for raw in RAW_SENSITIVE_VALUES + ["sk_live_1234567890abcdef", "12345678"]:
         assert raw not in rendered_profile
         assert raw not in rendered_signals
+        assert raw not in rendered_results
+        assert raw not in rendered_findings
+        assert raw not in rendered_report
 
     signal_data = json.loads(rendered_signals)
     assert [field["column_name"] for field in signal_data["fields"]] == ["name", "email", "phone", "postcode", "address"]
@@ -144,3 +153,43 @@ categories:
     trace_data = json.loads((output_dir / "sensitive_field_trace.json").read_text(encoding="utf-8"))
     assert trace_data["sheet"] == "Customers"
     assert trace_data["dataset_metadata"]["sheet_name"] == "Customers"
+
+
+def test_report_uses_file_names_not_full_paths(tmp_path):
+    input_dir = tmp_path / "very_sensitive_literal_directory"
+    input_dir.mkdir()
+    input_file = input_dir / "input.csv"
+    policy_file = tmp_path / "policy.yaml"
+    output_dir = tmp_path / "very_sensitive_output_directory"
+
+    input_file.write_text("email\na@example.com\n", encoding="utf-8")
+    policy_file.write_text(
+        """
+policy_name: test_policy
+review_levels:
+  high: {}
+  none: {}
+categories:
+  contact:
+    default_review_level: high
+    name_keywords: [email]
+""".strip(),
+        encoding="utf-8",
+    )
+
+    rc = main([
+        "--input", str(input_file),
+        "--policy", str(policy_file),
+        "--output-dir", str(output_dir),
+    ])
+    assert rc == 0
+
+    report = (output_dir / "sensitive_field_review_report.md").read_text(encoding="utf-8")
+    trace = (output_dir / "sensitive_field_trace.json").read_text(encoding="utf-8")
+
+    assert "very_sensitive_literal_directory" not in report
+    assert "input.csv" in report
+    assert "policy.yaml" in report
+    assert "very_sensitive_literal_directory" in trace
+    assert "very_sensitive_output_directory" not in report
+    assert "very_sensitive_output_directory" in trace

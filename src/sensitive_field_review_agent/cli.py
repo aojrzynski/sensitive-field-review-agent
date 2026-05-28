@@ -1,4 +1,4 @@
-"""CLI for Sensitive Field Review Agent intake and policy loading foundation."""
+"""CLI for Sensitive Field Review Agent intake, policy loading, and deterministic profiling."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pathlib import Path
 from sensitive_field_review_agent import __version__
 from sensitive_field_review_agent.intake import load_dataset
 from sensitive_field_review_agent.policy_loader import load_policy
+from sensitive_field_review_agent.profiling import dataset_profile_to_dict, profile_dataset
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,8 +44,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    _, dataset_metadata = load_dataset(args.input, sheet=args.sheet)
+    dataframe, dataset_metadata = load_dataset(args.input, sheet=args.sheet)
     policy = load_policy(args.policy)
+    dataset_profile = profile_dataset(
+        dataframe,
+        max_examples_per_field=policy.redaction.max_redacted_examples_per_field,
+    )
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -71,13 +76,19 @@ def main(argv: list[str] | None = None) -> int:
             "category_names": sorted(policy.categories.keys()),
             "field_override_names": sorted(policy.field_overrides.keys()),
         },
-        "status": "intake_and_policy_loaded",
+        "profile_artifacts": {
+            "field_profile_path": str(output_dir / "sensitive_field_profile.json"),
+        },
+        "status": "profile_generated",
     }
+
+    profile_path = output_dir / "sensitive_field_profile.json"
+    profile_path.write_text(json.dumps(dataset_profile_to_dict(dataset_profile), indent=2), encoding="utf-8")
 
     trace_path = output_dir / "sensitive_field_trace.json"
     trace_path.write_text(json.dumps(trace, indent=2), encoding="utf-8")
 
-    print("Loaded dataset and policy successfully. Detection engine will be implemented in later PRs.")
+    print("Loaded dataset and policy successfully. Deterministic safe field profile generated.")
     return 0
 
 

@@ -5,6 +5,15 @@ import pytest
 from sensitive_field_review_agent.cli import main
 
 
+RAW_SENSITIVE_VALUES = [
+    "Alice Example",
+    "alice@example.com",
+    "07111 000001",
+    "SW1A 1AA",
+    "10 Demo Street",
+]
+
+
 def test_main_version(capsys):
     with pytest.raises(SystemExit) as excinfo:
         main(["--version"])
@@ -22,12 +31,17 @@ def test_cli_help(capsys):
     assert "--sheet" in captured.out
 
 
-def test_cli_writes_trace(tmp_path, capsys):
+def test_cli_writes_trace_and_profile(tmp_path, capsys):
     input_file = tmp_path / "input.csv"
     policy_file = tmp_path / "policy.yaml"
     output_dir = tmp_path / "outputs"
 
-    input_file.write_text("id,name\n1,Alice\n2,Bob\n", encoding="utf-8")
+    input_file.write_text(
+        "name,email,phone,postcode,address\n"
+        "Alice Example,alice@example.com,07111 000001,SW1A 1AA,10 Demo Street\n"
+        "Bob Example,bob@example.com,07111 000002,EC1A 1BB,20 Demo Street\n",
+        encoding="utf-8",
+    )
     policy_file.write_text(
         """
 policy_name: test_policy
@@ -36,6 +50,8 @@ review_levels:
 categories:
   contact:
     default_review_level: high
+redaction:
+  max_redacted_examples_per_field: 2
 """.strip(),
         encoding="utf-8",
     )
@@ -54,18 +70,29 @@ categories:
 
     assert rc == 0
     captured = capsys.readouterr()
-    assert "Loaded dataset and policy successfully" in captured.out
+    assert "Deterministic safe field profile generated" in captured.out
 
     trace_file = output_dir / "sensitive_field_trace.json"
+    profile_file = output_dir / "sensitive_field_profile.json"
     assert trace_file.exists()
+    assert profile_file.exists()
 
     trace_data = json.loads(trace_file.read_text(encoding="utf-8"))
-    assert trace_data["status"] == "intake_and_policy_loaded"
+    assert trace_data["status"] == "profile_generated"
     assert trace_data["llm_review_requested"] is True
     assert trace_data["dataset_metadata"]["row_count"] == 2
-    assert trace_data["dataset_metadata"]["column_count"] == 2
+    assert trace_data["dataset_metadata"]["column_count"] == 5
     assert trace_data["policy_metadata"]["policy_name"] == "test_policy"
     assert trace_data["policy_metadata"]["category_names"] == ["contact"]
+    assert "field_profile_path" in trace_data["profile_artifacts"]
+
+    profile_data = json.loads(profile_file.read_text(encoding="utf-8"))
+    profile_field_names = [field["column_name"] for field in profile_data["field_profiles"]]
+    assert profile_field_names == ["name", "email", "phone", "postcode", "address"]
+
+    rendered_profile = profile_file.read_text(encoding="utf-8")
+    for raw in RAW_SENSITIVE_VALUES:
+        assert raw not in rendered_profile
 
 
 def test_cli_accepts_sheet_argument(tmp_path):

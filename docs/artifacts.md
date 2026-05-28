@@ -1,13 +1,26 @@
 # artifacts
 
-PR #2 writes one artifact:
+Current artifacts:
 - `sensitive_field_trace.json`
+- `sensitive_field_profile.json`
 
-The trace includes:
+## sensitive_field_trace.json
+Includes:
 - input and policy paths
 - output directory and optional sheet argument
+- llm review request metadata
 - dataset metadata (file/sheet/shape/column names)
 - policy metadata (policy name/version, review levels, categories, overrides)
-- status set to `intake_and_policy_loaded`
+- profile artifact metadata (`profile_artifacts.field_profile_path`)
+- status set to `profile_generated`
 
-This artifact records deterministic intake evidence for human review workflows.
+## sensitive_field_profile.json
+Includes deterministic safe field profile data:
+- dataset-level metadata (`row_count`, `column_count`)
+- one profile per field (`field_profiles`)
+- structural statistics (null/non-null/distinct metrics)
+- inferred physical type (string/number/boolean/datetime/unknown)
+- string length aggregates
+- safe/redacted example shapes only (no raw values)
+
+This artifact is designed for downstream triage support. It does not classify fields, make legal/compliance verdicts, or determine GDPR/PII status.

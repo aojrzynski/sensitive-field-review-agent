@@ -9,6 +9,7 @@ from pathlib import Path
 
 from sensitive_field_review_agent import __version__
 from sensitive_field_review_agent.intake import load_dataset
+from sensitive_field_review_agent.llm_review import build_safe_payload, run_llm_review, write_llm_artifacts
 from sensitive_field_review_agent.policy_loader import load_policy
 from sensitive_field_review_agent.profiling import dataset_profile_to_dict, profile_dataset
 from sensitive_field_review_agent.review_engine import dataset_review_to_dict, generate_dataset_review
@@ -22,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", default="outputs/sensitive_field_review", help="Directory for output artifacts")
     parser.add_argument("--sheet", default=None, help="Optional sheet name for Excel input (.xlsx/.xlsm)")
     parser.add_argument("--llm-review", action="store_true", help="Request optional LLM review mode (non-authoritative)")
-    parser.add_argument("--model", default=None, help="Optional model name for future LLM review")
+    parser.add_argument("--model", default=None, help="Optional model name for active LLM review")
     parser.add_argument("--version", action="version", version=f"sensitive-field-review-agent {__version__}")
     return parser
 
@@ -145,10 +146,18 @@ def main(argv: list[str] | None = None) -> int:
             "findings_csv_path": str(findings_csv_path),
             "review_report_path": str(review_report_path),
         },
+        "llm_review_status": "not_requested",
         "status": "review_artifacts_generated",
     }
 
     review_report_path.write_text(_build_review_report(review_dict, trace), encoding="utf-8")
+
+    if args.llm_review:
+        safe_payload = build_safe_payload(dataset_review, dataset_profile, dataset_signals)
+        llm_result = run_llm_review(safe_payload, args.model)
+        trace["llm_artifacts"] = write_llm_artifacts(output_dir, safe_payload, llm_result)
+        trace["llm_review_status"] = llm_result.get("llm_review_status", "failed_fallback")
+
     (output_dir / "sensitive_field_trace.json").write_text(json.dumps(trace, indent=2), encoding="utf-8")
 
     print("Loaded dataset and policy successfully. Deterministic safe profile, signals, and review artifacts generated.")

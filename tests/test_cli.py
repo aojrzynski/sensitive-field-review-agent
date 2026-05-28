@@ -82,6 +82,7 @@ redaction:
     trace_data = json.loads(trace_file.read_text(encoding="utf-8"))
     assert trace_data["status"] == "review_artifacts_generated"
     assert trace_data["llm_review_requested"] is True
+    assert trace_data["llm_review_status"] in {"skipped_missing_api_key", "failed_fallback", "completed"}
     assert trace_data["dataset_metadata"]["row_count"] == 2
     assert trace_data["dataset_metadata"]["column_count"] == 5
     assert trace_data["policy_metadata"]["policy_name"] == "test_policy"
@@ -193,3 +194,52 @@ categories:
     assert "very_sensitive_literal_directory" in trace
     assert "very_sensitive_output_directory" not in report
     assert "very_sensitive_output_directory" in trace
+
+
+def test_cli_without_llm_flag_sets_not_requested(tmp_path):
+    input_file = tmp_path / "input.csv"
+    input_file.write_text("email\na@example.com\n", encoding="utf-8")
+    policy_file = tmp_path / "policy.yaml"
+    policy_file.write_text("""
+policy_name: test_policy
+review_levels:
+  high: {}
+  none: {}
+categories:
+  contact:
+    default_review_level: high
+    name_keywords: [email]
+""".strip(), encoding="utf-8")
+
+    out = tmp_path / "out"
+    rc = main(["--input", str(input_file), "--policy", str(policy_file), "--output-dir", str(out)])
+    assert rc == 0
+    trace = json.loads((out / "sensitive_field_trace.json").read_text(encoding="utf-8"))
+    assert trace["llm_review_status"] == "not_requested"
+    assert not (out / "llm_field_review.json").exists()
+
+
+def test_cli_with_llm_flag_missing_key_writes_skipped_artifacts(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    input_file = tmp_path / "input.csv"
+    input_file.write_text("email\na@example.com\n", encoding="utf-8")
+    policy_file = tmp_path / "policy.yaml"
+    policy_file.write_text("""
+policy_name: test_policy
+review_levels:
+  high: {}
+  none: {}
+categories:
+  contact:
+    default_review_level: high
+    name_keywords: [email]
+""".strip(), encoding="utf-8")
+
+    out = tmp_path / "out"
+    rc = main(["--input", str(input_file), "--policy", str(policy_file), "--output-dir", str(out), "--llm-review"])
+    assert rc == 0
+    trace = json.loads((out / "sensitive_field_trace.json").read_text(encoding="utf-8"))
+    assert trace["llm_review_status"] == "skipped_missing_api_key"
+    assert (out / "llm_safe_field_summary.json").exists()
+    assert (out / "llm_field_review.json").exists()
+    assert (out / "llm_field_review.md").exists()

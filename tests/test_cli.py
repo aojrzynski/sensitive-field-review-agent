@@ -70,29 +70,37 @@ redaction:
 
     assert rc == 0
     captured = capsys.readouterr()
-    assert "Deterministic safe field profile generated" in captured.out
+    assert "Deterministic safe field profile and field signals generated" in captured.out
 
     trace_file = output_dir / "sensitive_field_trace.json"
     profile_file = output_dir / "sensitive_field_profile.json"
     assert trace_file.exists()
+    signals_file = output_dir / "sensitive_field_signals.json"
     assert profile_file.exists()
+    assert signals_file.exists()
 
     trace_data = json.loads(trace_file.read_text(encoding="utf-8"))
-    assert trace_data["status"] == "profile_generated"
+    assert trace_data["status"] == "signals_generated"
     assert trace_data["llm_review_requested"] is True
     assert trace_data["dataset_metadata"]["row_count"] == 2
     assert trace_data["dataset_metadata"]["column_count"] == 5
     assert trace_data["policy_metadata"]["policy_name"] == "test_policy"
     assert trace_data["policy_metadata"]["category_names"] == ["contact"]
     assert "field_profile_path" in trace_data["profile_artifacts"]
+    assert "field_signals_path" in trace_data["signal_artifacts"]
 
     profile_data = json.loads(profile_file.read_text(encoding="utf-8"))
     profile_field_names = [field["column_name"] for field in profile_data["field_profiles"]]
     assert profile_field_names == ["name", "email", "phone", "postcode", "address"]
 
     rendered_profile = profile_file.read_text(encoding="utf-8")
-    for raw in RAW_SENSITIVE_VALUES:
+    rendered_signals = signals_file.read_text(encoding="utf-8")
+    for raw in RAW_SENSITIVE_VALUES + ["sk_live_1234567890abcdef", "12345678"]:
         assert raw not in rendered_profile
+        assert raw not in rendered_signals
+
+    signal_data = json.loads(rendered_signals)
+    assert [field["column_name"] for field in signal_data["fields"]] == ["name", "email", "phone", "postcode", "address"]
 
 
 def test_cli_accepts_sheet_argument(tmp_path):

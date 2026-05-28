@@ -24,7 +24,7 @@ The tool acts as an agent by orchestrating multiple steps in a review workflow:
 - accepts review inputs (dataset + policy)
 - executes deterministic workflow stages
 - records review trace artifacts
-- optionally tracks future LLM review intent in metadata only
+- prepares deterministic evidence and safe/redacted summaries for a future active LLM review stage
 
 This implementation currently focuses on deterministic profiling only. It does not detect/classify sensitive fields yet.
 
@@ -44,7 +44,7 @@ python -m sensitive_field_review_agent.cli \
   --output-dir outputs/customers_sensitive_review
 ```
 
-Optional LLM review mode (future behavior will be expanded):
+Future active LLM review stage (not implemented yet):
 
 ```bash
 python -m sensitive_field_review_agent.cli \
@@ -54,7 +54,7 @@ python -m sensitive_field_review_agent.cli \
   --llm-review
 ```
 
-The `--llm-review` flag is currently accepted as workflow metadata only; no LLM calls are made at this stage.
+The `--llm-review` flag is currently accepted as workflow metadata only; no LLM calls are made at this stage. In a future stage, LLM review will consume only safe/redacted summaries plus deterministic evidence, must not receive raw dataset rows, must not override deterministic evidence, and must not make legal/compliance/GDPR verdicts.
 
 ## Output artifacts
 The current version writes:
@@ -69,7 +69,8 @@ The profile artifact is intentionally value-safe and does not include raw row va
 - This tool supports field-level triage, not final compliance decisions.
 - It does not provide legal/regulatory verdicts.
 - It does not determine GDPR/PII status.
-- Optional LLM usage is planned for later stages and must consume safe/redacted summaries.
+- A future active LLM review stage must consume only safe/redacted summaries and deterministic evidence.
+- The LLM must not receive raw dataset rows, override deterministic evidence, or make legal/compliance/GDPR verdicts.
 - Human reviewers make final decisions.
 
 ## Project structure

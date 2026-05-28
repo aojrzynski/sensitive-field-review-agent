@@ -1,6 +1,6 @@
 # architecture
 
-PR #3 adds deterministic profiling on top of intake + policy loading.
+The current implementation adds deterministic profiling on top of intake + policy loading.
 
 Current runtime flow:
 - Parse CLI arguments.

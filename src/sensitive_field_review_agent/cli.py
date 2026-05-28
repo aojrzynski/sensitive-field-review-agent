@@ -1,4 +1,4 @@
-"""CLI for Sensitive Field Review Agent intake and policy loading foundation."""
+"""CLI for Sensitive Field Review Agent intake, policy loading, and deterministic profiling."""
 
 from __future__ import annotations
 

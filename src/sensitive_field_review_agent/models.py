@@ -62,3 +62,36 @@ class SensitiveFieldPolicy:
     field_overrides: dict[str, FieldOverride]
     redaction: RedactionConfig
     thresholds: ThresholdsConfig
+
+
+@dataclass(slots=True)
+class SafeExampleShape:
+    length: int
+    letters_count: int
+    digits_count: int
+    whitespace_count: int
+    punctuation_or_symbol_count: int
+    generalized_shape: str
+
+
+@dataclass(slots=True)
+class FieldProfile:
+    column_name: str
+    row_count: int
+    non_null_count: int
+    null_count: int
+    null_ratio: float
+    distinct_count: int
+    distinct_ratio: float
+    inferred_physical_type: str
+    string_min_length: int | None
+    string_max_length: int | None
+    string_avg_length: float | None
+    safe_example_shapes: list[SafeExampleShape] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class DatasetProfile:
+    row_count: int
+    column_count: int
+    field_profiles: list[FieldProfile] = field(default_factory=list)

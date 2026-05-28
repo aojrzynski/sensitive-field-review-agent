@@ -15,7 +15,8 @@ An LLM can help with wording and interpretation, but it should not be the source
 The current implementation demonstrates:
 - deterministic intake for CSV/XLSX/XLSM datasets
 - YAML policy loading with structural validation
-- trace artifact output with dataset and policy metadata
+- deterministic safe field profiling (structural summaries only)
+- trace + profile artifact output with dataset and policy metadata
 - tests and CI wiring for iterative development
 
 ## Why this is an agent
@@ -23,9 +24,9 @@ The tool acts as an agent by orchestrating multiple steps in a review workflow:
 - accepts review inputs (dataset + policy)
 - executes deterministic workflow stages
 - records review trace artifacts
-- optionally uses an LLM layer in a bounded, non-authoritative role
+- optionally tracks future LLM review intent in metadata only
 
-This implementation currently focuses on intake and policy loading only; detection/classification logic is intentionally deferred.
+This implementation currently focuses on deterministic profiling only. It does not detect/classify sensitive fields yet.
 
 ## Quick start
 ```bash
@@ -34,7 +35,7 @@ python -m sensitive_field_review_agent.cli --help
 ```
 
 ## Example commands
-Deterministic intake run:
+Deterministic intake + profiling run:
 
 ```bash
 python -m sensitive_field_review_agent.cli \
@@ -57,20 +58,19 @@ The `--llm-review` flag is currently accepted as workflow metadata only; no LLM 
 
 ## Output artifacts
 The current version writes:
-- `sensitive_field_trace.json`: intake trace with input metadata, policy metadata, and status.
+- `sensitive_field_trace.json`: intake and profiling trace with workflow metadata.
+- `sensitive_field_profile.json`: deterministic safe field profile with redacted structural examples.
 
-Future PRs will add detection, triage evidence, and richer review artifacts.
+The profile artifact is intentionally value-safe and does not include raw row values.
 
 ## Authority boundary
 - Deterministic signal extraction provides evidence.
 - Policy configuration provides human-authored review criteria.
-- Review/classification metadata supports triage and follow-up.
-- Optional LLM output can assist wording and bounded semantic review.
+- This tool supports field-level triage, not final compliance decisions.
+- It does not provide legal/regulatory verdicts.
+- It does not determine GDPR/PII status.
+- Optional LLM usage is planned for later stages and must consume safe/redacted summaries.
 - Human reviewers make final decisions.
-- LLM output is never the source of truth.
-
-Example wording for early review:
-"This field appears likely to contain personal contact information and should be reviewed before sharing."
 
 ## Project structure
 ```text
@@ -85,12 +85,3 @@ Example wording for early review:
 ```bash
 python -m pytest
 ```
-
-## Limitations and non-goals
-- This scaffold does not implement full detection logic yet.
-- It does not provide legal or regulatory verdicts.
-- It does not replace human review decisions.
-- It does not treat LLM output as authoritative evidence.
-
-## Further reading
-See the `docs/` directory for architecture notes, artifacts, roadmap, and design principles.

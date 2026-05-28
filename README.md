@@ -90,3 +90,12 @@ The profile artifact is intentionally value-safe and does not include raw row va
 ```bash
 python -m pytest
 ```
+
+
+## Active LLM review over safe deterministic evidence
+
+This project includes a bounded non-authoritative review assistant stage via `--llm-review`.
+The LLM stage consumes only safe deterministic evidence (review results, profile summaries, signal summaries, and reviewer questions).
+Deterministic outputs remain authoritative evidence, and human reviewers make final decisions.
+The LLM stage provides advisory review notes and does not modify deterministic suggestions.
+No legal/compliance verdicts are produced.

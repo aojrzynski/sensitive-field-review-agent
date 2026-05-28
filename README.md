@@ -16,7 +16,7 @@ The current implementation demonstrates:
 - deterministic intake for CSV/XLSX/XLSM datasets
 - YAML policy loading with structural validation
 - deterministic safe field profiling (structural summaries only)
-- trace + profile + signals artifact output with dataset and policy metadata
+- trace + profile + signals + deterministic review artifact output with dataset and policy metadata
 - tests and CI wiring for iterative development
 
 ## Why this is an agent
@@ -26,7 +26,7 @@ The tool acts as an agent by orchestrating multiple steps in a review workflow:
 - records review trace artifacts
 - prepares deterministic evidence and safe/redacted summaries for a future active LLM review stage
 
-This implementation currently focuses on deterministic profiling plus deterministic field-signal extraction. It does not create final findings, final categories, or final review levels.
+This implementation currently includes deterministic profiling, deterministic field-signal extraction, and deterministic review suggestions that support triage. It does not make legal/compliance verdicts, and human reviewer makes the final decision.
 
 ## Quick start
 ```bash
@@ -35,7 +35,7 @@ python -m sensitive_field_review_agent.cli --help
 ```
 
 ## Example commands
-Deterministic intake + profiling + signal extraction run:
+Deterministic intake + profiling + signal extraction + review artifact run:
 
 ```bash
 python -m sensitive_field_review_agent.cli \
@@ -61,6 +61,9 @@ The current version writes:
 - `sensitive_field_trace.json`: intake, profiling, and signal extraction trace with workflow metadata.
 - `sensitive_field_profile.json`: deterministic safe field profile with redacted structural examples.
 - `sensitive_field_signals.json`: deterministic field signals from pattern families and column-name keywords.
+- `sensitive_field_results.json`: structured deterministic review suggestions by field.
+- `sensitive_field_findings.csv`: flat findings table with suggested category/level and evidence summary.
+- `sensitive_field_review_report.md`: human-readable report for review triage.
 
 The profile artifact is intentionally value-safe and does not include raw row values.
 

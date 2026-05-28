@@ -60,6 +60,15 @@ categories:
       - "Should this field exist in the dataset at all?"
       - "Has it been rotated or removed from shared copies?"
 
+
+  operational_identifier:
+    description: "Operational IDs used for record linkage in controlled workflows."
+    default_review_level: low
+    name_keywords: [customer_id, account_id, internal_id]
+    pattern_families: []
+    reviewer_questions:
+      - "Is this identifier needed in shared extracts?"
+
   free_text_risk:
     description: "Free-text fields that may contain unstructured sensitive information."
     default_review_level: medium

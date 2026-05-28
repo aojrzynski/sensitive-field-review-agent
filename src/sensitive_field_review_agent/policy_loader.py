@@ -20,6 +20,14 @@ def _expect_dict(value: object, field_name: str) -> dict:
     return value
 
 
+def _parse_list(value: object, field_name: str) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValueError(f"{field_name} must be a list")
+    return [str(item) for item in value]
+
+
 def load_policy(path: str | Path) -> SensitiveFieldPolicy:
     policy_path = Path(path)
     if not policy_path.exists():
@@ -64,9 +72,9 @@ def load_policy(path: str | Path) -> SensitiveFieldPolicy:
             name=name,
             description=cfg_dict.get("description"),
             default_review_level=default_level,
-            name_keywords=[str(value) for value in cfg_dict.get("name_keywords", [])],
-            pattern_families=[str(value) for value in cfg_dict.get("pattern_families", [])],
-            reviewer_questions=[str(value) for value in cfg_dict.get("reviewer_questions", [])],
+            name_keywords=_parse_list(cfg_dict.get("name_keywords"), f"categories.{name}.name_keywords"),
+            pattern_families=_parse_list(cfg_dict.get("pattern_families"), f"categories.{name}.pattern_families"),
+            reviewer_questions=_parse_list(cfg_dict.get("reviewer_questions"), f"categories.{name}.reviewer_questions"),
         )
 
     raw_overrides = _expect_dict(raw_policy.get("field_overrides", {}), "field_overrides")
@@ -78,9 +86,14 @@ def load_policy(path: str | Path) -> SensitiveFieldPolicy:
             raise ValueError(
                 f"field_overrides.{field_name}.review_level references unknown level: {review_level}"
             )
+        category = cfg_dict.get("category")
+        if category not in categories:
+            raise ValueError(
+                f"field_overrides.{field_name}.category references unknown category: {category}"
+            )
         field_overrides[field_name] = FieldOverride(
             field_name=field_name,
-            category=str(cfg_dict.get("category", "")),
+            category=str(category),
             review_level=review_level,
             reason=cfg_dict.get("reason"),
         )

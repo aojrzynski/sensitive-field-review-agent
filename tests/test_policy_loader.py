@@ -77,3 +77,72 @@ def test_malformed_yaml_raises(tmp_path):
     path.write_text("policy_name: [", encoding="utf-8")
     with pytest.raises(ValueError, match="Malformed YAML"):
         load_policy(path)
+
+
+def test_unknown_override_category_raises(tmp_path):
+    path = tmp_path / "policy.yaml"
+    path.write_text(
+        """
+policy_name: x
+review_levels: {high: {}, low: {}}
+categories: {known: {default_review_level: high}}
+field_overrides:
+  id:
+    category: unknown
+    review_level: low
+""".strip(),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="unknown category"):
+        load_policy(path)
+
+
+def test_category_name_keywords_must_be_list(tmp_path):
+    path = tmp_path / "policy.yaml"
+    path.write_text(
+        """
+policy_name: x
+review_levels: {high: {}}
+categories:
+  c1:
+    default_review_level: high
+    name_keywords: email
+""".strip(),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="name_keywords must be a list"):
+        load_policy(path)
+
+
+def test_category_pattern_families_must_be_list(tmp_path):
+    path = tmp_path / "policy.yaml"
+    path.write_text(
+        """
+policy_name: x
+review_levels: {high: {}}
+categories:
+  c1:
+    default_review_level: high
+    pattern_families: email_like
+""".strip(),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="pattern_families must be a list"):
+        load_policy(path)
+
+
+def test_category_reviewer_questions_must_be_list(tmp_path):
+    path = tmp_path / "policy.yaml"
+    path.write_text(
+        """
+policy_name: x
+review_levels: {high: {}}
+categories:
+  c1:
+    default_review_level: high
+    reviewer_questions: {q: text}
+""".strip(),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="reviewer_questions must be a list"):
+        load_policy(path)

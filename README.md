@@ -25,7 +25,7 @@ The tool acts as an agent by orchestrating multiple steps in a review workflow:
 - records review trace artifacts
 - optionally uses an LLM layer in a bounded, non-authoritative role
 
-This PR adds a foundation layer only; detection/classification logic is intentionally deferred.
+This implementation currently focuses on intake and policy loading only; detection/classification logic is intentionally deferred.
 
 ## Quick start
 ```bash
@@ -53,7 +53,7 @@ python -m sensitive_field_review_agent.cli \
   --llm-review
 ```
 
-If `--llm-review` is requested without `OPENAI_API_KEY`, the intended long-term behavior is to continue and write deterministic fallback output. For PR #1, this is documented but not fully implemented.
+The `--llm-review` flag is currently accepted as workflow metadata only; no LLM calls are made at this stage.
 
 ## Output artifacts
 The current version writes:

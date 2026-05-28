@@ -20,8 +20,8 @@ _PHONE_RE = re.compile(r"^(?:\+?44|0)\s*(?:\d\s*){9,10}$")
 _UK_POSTCODE_RE = re.compile(r"^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$", re.IGNORECASE)
 _DATE_RE = re.compile(r"^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})$")
 _NATIONAL_ID_RE = re.compile(r"^[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]?$", re.IGNORECASE)
-_ACCOUNT_NUMBER_RE = re.compile(r"^\d{8,12}$")
-_CURRENCY_RE = re.compile(r"^(?:[£$€]\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)$")
+_ACCOUNT_NUMBER_RE = re.compile(r"^\d{8}$")
+_CURRENCY_RE = re.compile(r"^(?:[£$€]\s?\d+(?:\.\d+)?|\d+\.\d+)$")
 _SECRET_RE = re.compile(r"(?:sk_(?:live|test)_[A-Za-z0-9]{8,}|token|secret|api[_-]?key)", re.IGNORECASE)
 
 
@@ -92,7 +92,7 @@ def _keyword_signal(column_name: str, category_name: str, category_policy: Categ
         if (
             normalized_column == normalized_keyword
             or normalized_keyword in normalized_column
-            or bool(column_tokens & keyword_tokens)
+            or keyword_tokens.issubset(column_tokens)
         ):
             signals.append(
                 FieldSignal(

@@ -1,2 +1,97 @@
-# sensitive-field-review-agent
-Local-first Python CLI agent for reviewing potentially sensitive dataset fields
+# Sensitive Field Review Agent
+
+## Short description
+Sensitive Field Review Agent is a scaffolded Python tool for reviewing tabular datasets to identify fields that may contain sensitive, personal, or policy-controlled information, and to capture evidence that supports that review.
+
+## Why this exists
+Teams regularly share CSV and spreadsheet data across analytics, engineering, and vendor workflows. A lightweight review step helps identify columns that may need additional handling before data is shared.
+
+This project focuses on making that review process explicit, repeatable, and auditable.
+
+## Why not just ask an LLM?
+An LLM can help with wording and interpretation, but it should not be the source of truth for data review decisions. Deterministic checks and clear policy configuration provide traceable evidence. Human reviewers still decide what to do.
+
+## What this project demonstrates
+This scaffold demonstrates:
+- a clean Python package layout using `src/`
+- a CLI entry point for review workflows
+- placeholder output artifacts for traceability
+- tests and CI wiring for iterative development
+- documentation that defines decision boundaries early
+
+## Why this is an agent
+The tool acts as an agent by orchestrating multiple steps in a review workflow:
+- accepts review inputs (dataset + policy)
+- executes deterministic workflow stages
+- records review trace artifacts
+- optionally uses an LLM layer in a bounded, non-authoritative role
+
+In this initial PR, the runtime behavior is scaffold-only and intentionally minimal.
+
+## Quick start
+```bash
+python -m pip install -e ".[dev]"
+python -m sensitive_field_review_agent.cli --help
+```
+
+## Example commands
+Deterministic scaffold run:
+
+```bash
+python -m sensitive_field_review_agent.cli \
+  --input sample_data/customers/customers_sensitive_review.csv \
+  --policy config/examples/sensitive_field_policy.yaml \
+  --output-dir outputs/customers_sensitive_review
+```
+
+Optional LLM review mode (future behavior will be expanded):
+
+```bash
+python -m sensitive_field_review_agent.cli \
+  --input sample_data/customers/customers_sensitive_review.csv \
+  --policy config/examples/sensitive_field_policy.yaml \
+  --output-dir outputs/customers_sensitive_review_llm \
+  --llm-review
+```
+
+If `--llm-review` is requested without `OPENAI_API_KEY`, the intended long-term behavior is to continue and write deterministic fallback output. For PR #1, this is documented but not fully implemented.
+
+## Output artifacts
+The scaffold currently writes:
+- `sensitive_field_trace.json`: placeholder execution trace with run metadata and scaffold status.
+
+Future PRs will add richer evidence and triage artifacts.
+
+## Authority boundary
+- Deterministic signal extraction provides evidence.
+- Policy configuration provides human-authored review criteria.
+- Review/classification metadata supports triage and follow-up.
+- Optional LLM output can assist wording and bounded semantic review.
+- Human reviewers make final decisions.
+- LLM output is never the source of truth.
+
+Example wording for early review:
+"This field appears likely to contain personal contact information and should be reviewed before sharing."
+
+## Project structure
+```text
+.
+├── docs/
+├── src/sensitive_field_review_agent/
+├── tests/
+└── .github/workflows/
+```
+
+## Run tests
+```bash
+python -m pytest
+```
+
+## Limitations and non-goals
+- This scaffold does not implement full detection logic yet.
+- It does not provide legal or regulatory verdicts.
+- It does not replace human review decisions.
+- It does not treat LLM output as authoritative evidence.
+
+## Further reading
+See the `docs/` directory for architecture notes, artifacts, roadmap, and design principles.

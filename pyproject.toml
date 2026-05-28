@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sensitive-field-review-agent"
+version = "0.1.0"
+description = "Scaffold for deterministic-first sensitive field review workflows."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pandas>=2.0.0",
+  "openpyxl>=3.1.0",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+llm = [
+  "openai>=1.0.0",
+]
+
+[project.scripts]
+sensitive-field-review-agent = "sensitive_field_review_agent.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

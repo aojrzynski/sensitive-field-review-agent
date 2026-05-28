@@ -95,3 +95,38 @@ class DatasetProfile:
     row_count: int
     column_count: int
     field_profiles: list[FieldProfile] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class FieldSignalEvidence:
+    checked_count: int | None = None
+    matched_count: int | None = None
+    matched_ratio: float | None = None
+    min_count: int | None = None
+    min_ratio: float | None = None
+    threshold_met: bool | None = None
+    matched_keyword: str | None = None
+
+
+@dataclass(slots=True)
+class FieldSignal:
+    column_name: str
+    signal_type: str
+    signal_name: str
+    policy_category: str
+    evidence: FieldSignalEvidence
+    matched: bool
+    notes: str
+
+
+@dataclass(slots=True)
+class FieldSignalSet:
+    column_name: str
+    signals: list[FieldSignal] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class DatasetSignals:
+    row_count: int
+    column_count: int
+    fields: list[FieldSignalSet] = field(default_factory=list)

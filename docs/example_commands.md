@@ -14,6 +14,7 @@ python -m sensitive_field_review_agent.cli \
 Expected artifacts:
 - `outputs/customers_sensitive_review/sensitive_field_trace.json`
 - `outputs/customers_sensitive_review/sensitive_field_profile.json`
+- `outputs/customers_sensitive_review/sensitive_field_signals.json`
 
 Excel input can include an explicit sheet:
 

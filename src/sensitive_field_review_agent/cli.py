@@ -10,6 +10,7 @@ from sensitive_field_review_agent import __version__
 from sensitive_field_review_agent.intake import load_dataset
 from sensitive_field_review_agent.policy_loader import load_policy
 from sensitive_field_review_agent.profiling import dataset_profile_to_dict, profile_dataset
+from sensitive_field_review_agent.signals import dataset_signals_to_dict, generate_dataset_signals
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -51,6 +52,8 @@ def main(argv: list[str] | None = None) -> int:
         max_examples_per_field=policy.redaction.max_redacted_examples_per_field,
     )
 
+    dataset_signals = generate_dataset_signals(dataframe, policy)
+
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -79,16 +82,22 @@ def main(argv: list[str] | None = None) -> int:
         "profile_artifacts": {
             "field_profile_path": str(output_dir / "sensitive_field_profile.json"),
         },
-        "status": "profile_generated",
+        "signal_artifacts": {
+            "field_signals_path": str(output_dir / "sensitive_field_signals.json"),
+        },
+        "status": "signals_generated",
     }
 
     profile_path = output_dir / "sensitive_field_profile.json"
     profile_path.write_text(json.dumps(dataset_profile_to_dict(dataset_profile), indent=2), encoding="utf-8")
 
+    signals_path = output_dir / "sensitive_field_signals.json"
+    signals_path.write_text(json.dumps(dataset_signals_to_dict(dataset_signals), indent=2), encoding="utf-8")
+
     trace_path = output_dir / "sensitive_field_trace.json"
     trace_path.write_text(json.dumps(trace, indent=2), encoding="utf-8")
 
-    print("Loaded dataset and policy successfully. Deterministic safe field profile generated.")
+    print("Loaded dataset and policy successfully. Deterministic safe field profile and field signals generated.")
     return 0
 
 

@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", default="outputs/sensitive_field_review", help="Directory for output artifacts")
     parser.add_argument("--sheet", default=None, help="Optional sheet name for Excel input (.xlsx/.xlsm)")
     parser.add_argument("--llm-review", action="store_true", help="Request optional LLM review mode (non-authoritative)")
-    parser.add_argument("--model", default=None, help="Optional model name for future LLM review")
+    parser.add_argument("--model", default=None, help="Optional model name for active LLM review")
     parser.add_argument("--version", action="version", version=f"sensitive-field-review-agent {__version__}")
     return parser
 

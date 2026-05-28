@@ -1,6 +1,7 @@
 # artifacts
 
-Current artifacts:
+## Deterministic artifacts
+The deterministic workflow writes these artifacts on every successful run:
 - `sensitive_field_trace.json`
 - `sensitive_field_profile.json`
 - `sensitive_field_signals.json`
@@ -8,11 +9,20 @@ Current artifacts:
 - `sensitive_field_findings.csv`
 - `sensitive_field_review_report.md`
 
+## Optional LLM artifacts
+When `--llm-review` is requested, the workflow also writes:
+- `llm_safe_field_summary.json`
+- `llm_field_review.json`
+- `llm_field_review.md`
+
+If no `OPENAI_API_KEY` is configured, these LLM artifacts still exist with a skipped/fallback status, and deterministic artifacts remain available.
+
 ## sensitive_field_trace.json
 Includes:
 - input and policy paths
 - output directory and optional sheet argument
-- llm review request metadata
+- `llm_review_requested`
+- `llm_review_status` (`not_requested`, `skipped_missing_api_key`, `completed`, or `failed_fallback`)
 - dataset metadata (file/sheet/shape/column names)
 - policy metadata (policy name/version, review levels, categories, overrides)
 - profile artifact metadata (`profile_artifacts.field_profile_path`)
@@ -21,6 +31,10 @@ Includes:
   - `review_artifacts.results_path`
   - `review_artifacts.findings_csv_path`
   - `review_artifacts.review_report_path`
+- LLM artifact metadata when `--llm-review` is requested:
+  - `llm_artifacts.safe_field_summary_path`
+  - `llm_artifacts.field_review_json_path`
+  - `llm_artifacts.field_review_markdown_path`
 - status set to `review_artifacts_generated`
 
 ## sensitive_field_profile.json
@@ -65,13 +79,29 @@ Includes a human-readable triage summary:
 - fields that may require review
 - fields with no configured deterministic signals
 
-All review outputs are deterministic triage suggestions for human review. They are not legal/compliance/GDPR/PII verdicts, and they do not make final decisions.
+## llm_safe_field_summary.json
+Includes the exact safe deterministic payload prepared for the LLM stage:
+- policy name/version and authority note
+- row/column counts
+- one safe field summary per column
+- deterministic review suggestions and evidence summaries
+- aggregate signal/profile summaries
+- reviewer questions and decision authority notes
 
+It does not include raw dataset rows, raw matched values, or full local filesystem paths.
 
-## Active LLM review over safe deterministic evidence
+## llm_field_review.json
+Includes structured LLM stage output when `--llm-review` is requested:
+- `llm_review_status`
+- authority note
+- field-level advisory review notes when completed
+- skipped/fallback status when the LLM stage is unavailable
 
-This project includes a bounded non-authoritative review assistant stage via `--llm-review`.
-The LLM stage consumes only safe deterministic evidence (review results, profile summaries, signal summaries, and reviewer questions).
-Deterministic outputs remain authoritative evidence, and human reviewers make final decisions.
-The LLM stage provides advisory review notes and does not modify deterministic suggestions.
-No legal/compliance verdicts are produced.
+## llm_field_review.md
+Includes human-readable advisory review notes when `--llm-review` is requested:
+- authority boundary
+- reminder that deterministic outputs remain authoritative evidence
+- reminder that human reviewers make final decisions
+- completed, skipped, or fallback status
+
+All review outputs are triage suggestions for human review. They are not legal or regulatory verdicts, and they do not make final decisions.

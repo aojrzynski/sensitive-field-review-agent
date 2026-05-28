@@ -1,9 +1,4 @@
-"""CLI scaffold for Sensitive Field Review Agent.
-
-This module provides a minimal command-line interface for PR #1. It creates
-placeholder trace output so workflow shape and tooling can be validated before
-implementing the real review engine in later PRs.
-"""
+"""CLI for Sensitive Field Review Agent intake and policy loading foundation."""
 
 from __future__ import annotations
 
@@ -12,17 +7,23 @@ import json
 from pathlib import Path
 
 from sensitive_field_review_agent import __version__
+from sensitive_field_review_agent.intake import load_dataset
+from sensitive_field_review_agent.policy_loader import load_policy
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build and return the CLI argument parser for scaffold execution."""
-    parser = argparse.ArgumentParser(description="Sensitive Field Review Agent (scaffold)")
+    parser = argparse.ArgumentParser(description="Sensitive Field Review Agent")
     parser.add_argument("--input", required=True, help="Path to input dataset file")
     parser.add_argument("--policy", required=True, help="Path to policy configuration file")
     parser.add_argument(
         "--output-dir",
         default="outputs/sensitive_field_review",
         help="Directory for output artifacts",
+    )
+    parser.add_argument(
+        "--sheet",
+        default=None,
+        help="Optional sheet name for Excel input (.xlsx/.xlsm)",
     )
     parser.add_argument(
         "--llm-review",
@@ -39,13 +40,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run scaffold CLI and emit placeholder trace metadata.
-
-    The scaffold records request metadata and emits a `scaffold_only` status.
-    No sensitive field detection or classification is performed in PR #1.
-    """
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    _, dataset_metadata = load_dataset(args.input, sheet=args.sheet)
+    policy = load_policy(args.policy)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -54,15 +53,31 @@ def main(argv: list[str] | None = None) -> int:
         "input_path": str(args.input),
         "policy_path": str(args.policy),
         "output_directory": str(output_dir),
+        "sheet": args.sheet,
         "llm_review_requested": bool(args.llm_review),
         "model": args.model,
-        "status": "scaffold_only",
+        "dataset_metadata": {
+            "file_name": dataset_metadata.file_name,
+            "file_extension": dataset_metadata.file_extension,
+            "sheet_name": dataset_metadata.sheet_name,
+            "row_count": dataset_metadata.row_count,
+            "column_count": dataset_metadata.column_count,
+            "columns": dataset_metadata.columns,
+        },
+        "policy_metadata": {
+            "policy_name": policy.policy_name,
+            "policy_version": policy.policy_version,
+            "review_level_names": sorted(policy.review_levels.keys()),
+            "category_names": sorted(policy.categories.keys()),
+            "field_override_names": sorted(policy.field_overrides.keys()),
+        },
+        "status": "intake_and_policy_loaded",
     }
 
     trace_path = output_dir / "sensitive_field_trace.json"
     trace_path.write_text(json.dumps(trace, indent=2), encoding="utf-8")
 
-    print("Scaffold installed. Review engine implementation will arrive in later PRs.")
+    print("Loaded dataset and policy successfully. Detection engine will be implemented in later PRs.")
     return 0
 
 

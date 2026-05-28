@@ -1,0 +1,94 @@
+policy_name: default_sensitive_field_policy
+policy_version: "0.1.0"
+
+authority_boundary:
+  note: >
+    This policy supports field-level triage only. Findings are review prompts,
+    not legal or compliance verdicts.
+
+review_levels:
+  high:
+    description: "Strong evidence that the field should be reviewed before sharing."
+  medium:
+    description: "Some evidence that the field may need review."
+  low:
+    description: "Low-risk reference or operational field, but still recorded."
+  none:
+    description: "No configured sensitive-field signal detected."
+
+categories:
+  direct_identifier:
+    description: "Fields that may directly identify a person."
+    default_review_level: high
+    name_keywords: [full_name, first_name, last_name, date_of_birth, dob, national_insurance, nino, national_id, passport]
+    pattern_families: [national_id_like]
+    reviewer_questions:
+      - "Is this field needed for the intended use?"
+      - "Can this field be removed, tokenised, or replaced with a less identifying value?"
+
+  contact_information:
+    description: "Fields that may contain contact details."
+    default_review_level: high
+    name_keywords: [email, phone, mobile, telephone]
+    pattern_families: [email_like, phone_like]
+    reviewer_questions:
+      - "Should contact information be shared with this audience?"
+      - "Is masking or aggregation possible?"
+
+  location:
+    description: "Fields that may reveal location or address information."
+    default_review_level: medium
+    name_keywords: [postcode, post_code, address, address_line, delivery_postcode]
+    pattern_families: [uk_postcode_like]
+    reviewer_questions:
+      - "Is this precise location needed, or would a broader geography work?"
+
+  financial:
+    description: "Fields that may contain financial values or account information."
+    default_review_level: medium
+    name_keywords: [account_balance, balance, salary, sort_code, account_number, iban]
+    pattern_families: [account_number_like, currency_or_amount_like]
+    reviewer_questions:
+      - "Is the amount or account-level information needed for this use case?"
+
+  authentication_or_secret:
+    description: "Fields that may contain credentials, tokens, or secrets."
+    default_review_level: high
+    name_keywords: [password, token, secret, api_key, access_key]
+    pattern_families: [secret_or_token_like]
+    reviewer_questions:
+      - "Should this field exist in the dataset at all?"
+      - "Has it been rotated or removed from shared copies?"
+
+
+  operational_identifier:
+    description: "Operational IDs used for record linkage in controlled workflows."
+    default_review_level: low
+    name_keywords: [customer_id, account_id, internal_id]
+    pattern_families: []
+    reviewer_questions:
+      - "Is this identifier needed in shared extracts?"
+
+  free_text_risk:
+    description: "Free-text fields that may contain unstructured sensitive information."
+    default_review_level: medium
+    name_keywords: [notes, comments, description, case_notes]
+    pattern_families: []
+    reviewer_questions:
+      - "Could this free-text field contain personal or sensitive information?"
+      - "Should it be excluded, sampled, or reviewed manually?"
+
+field_overrides:
+  customer_id:
+    category: operational_identifier
+    review_level: low
+    reason: "Synthetic operational ID in the demo dataset."
+
+redaction:
+  max_redacted_examples_per_field: 3
+  never_include_raw_values: true
+
+thresholds:
+  pattern_match_min_count: 2
+  pattern_match_min_ratio: 0.6
+  free_text_avg_length: 40

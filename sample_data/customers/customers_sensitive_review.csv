@@ -1,0 +1,7 @@
+customer_id,full_name,email,phone,date_of_birth,postcode,address_line_1,marketing_consent,account_balance,internal_segment,notes
+CUST-1001,Alice Example,alice@example.com,07111 000001,1990-01-12,SW1A 1AA,10 Demo Street,true,1250.50,alpha,"Requested email updates only"
+CUST-1002,Bob Sample,bob@example.com,07111 000002,1985-05-03,EC1A 1BB,22 Sample Road,false,98.10,beta,"Prefers phone contact after 6pm"
+CUST-1003,Casey Placeholder,casey@example.com,07111 000003,1992-11-23,M1 1AE,3 Placeholder Avenue,true,5020.00,gamma,"No additional notes"
+CUST-1004,Drew Mock,drew@example.com,07111 000004,1979-08-17,BS1 4DJ,44 Mock Lane,false,0.00,delta,"Account temporarily inactive"
+CUST-1005,Erin Demo,erin@example.com,07111 000005,2001-02-09,EH1 2NG,5 Demo Close,true,310.75,alpha,"Asked for quarterly summary"
+CUST-1006,Finley Test,finley@example.com,07111 000006,1995-12-30,CF10 1EP,61 Test Way,true,845.20,beta,"General enquiry resolved"

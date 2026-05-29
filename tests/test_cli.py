@@ -19,7 +19,7 @@ def test_main_version(capsys):
         main(["--version"])
     assert excinfo.value.code == 0
     captured = capsys.readouterr()
-    assert "sensitive-field-review-agent 0.1.0" in captured.out
+    assert "sensitive-field-review-agent 1.0.0" in captured.out
 
 
 def test_cli_help(capsys):

@@ -41,7 +41,11 @@ def _score_category(signals: list[FieldSignal], category: str, category_order: l
 
 def _evidence_for_signals(selected_signals: list[FieldSignal], category: str) -> list[FieldReviewEvidence]:
     evidence: list[FieldReviewEvidence] = []
-    for signal in selected_signals:
+    ordered_signals = sorted(
+        selected_signals,
+        key=lambda signal: 0 if signal.signal_type == "pattern_family" else 1,
+    )
+    for signal in ordered_signals:
         if signal.signal_type == "column_name_keyword":
             keyword = signal.evidence.matched_keyword or "<configured keyword>"
             summary = (

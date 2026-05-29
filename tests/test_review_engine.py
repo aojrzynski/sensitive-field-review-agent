@@ -27,6 +27,7 @@ def _build_review_dict() -> dict:
             "phone": ["07111 000001", "07111 000002", "07111 000003"],
             "postcode": ["SW1A 1AA", "EC1A 1BB", "W1A 0AX"],
             "address": ["10 Demo Street", "11 Demo Street", "12 Demo Street"],
+            "account_balance": [100.50, 201.20, 0.0],
             "misc": ["ok", "done", "clear"],
         }
     )
@@ -45,6 +46,12 @@ def test_review_engine_core_behaviors():
     assert by_col["phone"]["suggested_policy_category"] == "contact_information"
     assert by_col["postcode"]["suggested_policy_category"] == "location"
     assert by_col["address"]["suggested_policy_category"] == "location"
+    assert by_col["account_balance"]["suggested_policy_category"] == "financial"
+
+    assert "'email_like' met the policy threshold" in by_col["email"]["evidence_summary"]
+    assert "'phone_like' met the policy threshold" in by_col["phone"]["evidence_summary"]
+    assert "'uk_postcode_like' met the policy threshold" in by_col["postcode"]["evidence_summary"]
+    assert "'currency_or_amount_like' met the policy threshold" in by_col["account_balance"]["evidence_summary"]
 
     assert by_col["misc"]["review_required"] is False
     assert by_col["misc"]["suggested_review_level"] in {"none", "low"}

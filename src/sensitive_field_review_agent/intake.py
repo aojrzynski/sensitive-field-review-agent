@@ -29,7 +29,7 @@ def load_dataset(path: str | Path, sheet: str | None = None) -> tuple[pd.DataFra
             sheet_name = sheet
         dataframe = pd.read_excel(dataset_path, sheet_name=sheet_name)
     else:
-        raise ValueError(f"Unsupported dataset extension: {extension}")
+        raise ValueError(f"Unsupported dataset extension: {extension}. Supported formats: .csv, .xlsx, .xlsm")
 
     if dataframe.shape[0] == 0:
         raise ValueError("Loaded dataset has zero rows")

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sensitive-field-review-agent"
-version = "0.1.0"
-description = "Scaffold for deterministic-first sensitive field review workflows."
+version = "1.0.0"
+description = "Local-first CLI agent for deterministic sensitive-field triage with bounded advisory LLM review."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

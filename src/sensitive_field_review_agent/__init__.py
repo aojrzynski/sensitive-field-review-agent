@@ -1,6 +1,8 @@
-"""Sensitive Field Review Agent package.
+"""Local-first CLI agent for deterministic sensitive-field triage.
 
-This package is intentionally scaffold-only in PR #1.
+The package provides CSV/XLSX intake, policy-driven profiling,
+deterministic review artifacts, and optional bounded advisory LLM review
+over redacted structural evidence.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"

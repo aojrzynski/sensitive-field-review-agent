@@ -1,4 +1,10 @@
-"""CLI for Sensitive Field Review Agent deterministic intake, profiling, signals, and review artifacts."""
+"""Command-line orchestration for the sensitive field review workflow.
+
+The CLI loads a dataset and human-authored YAML policy, writes deterministic
+profile, signal, review, report, and trace artifacts on success, and optionally
+writes LLM review artifacts when ``--llm-review`` is requested. Expected user
+errors are caught and displayed cleanly.
+"""
 
 from __future__ import annotations
 
@@ -18,6 +24,8 @@ from sensitive_field_review_agent.signals import dataset_signals_to_dict, genera
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser without executing workflow stages."""
+
     parser = argparse.ArgumentParser(description="Sensitive Field Review Agent")
     parser.add_argument("--input", required=True, help="Path to input dataset file")
     parser.add_argument("--policy", required=True, help="Path to policy configuration file")
@@ -30,6 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _write_findings_csv(path: Path, review_dict: dict) -> None:
+    """Write the compact field findings CSV derived from review results."""
+
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(
             fh,
@@ -48,6 +58,8 @@ def _write_findings_csv(path: Path, review_dict: dict) -> None:
 
 
 def _build_review_report(review_dict: dict, trace: dict) -> str:
+    """Build the deterministic Markdown report from review output and trace."""
+
     fields = review_dict["fields"]
     requiring_review = [f for f in fields if f["review_required"]]
     no_signal = [f for f in fields if f["confidence"] == "none"]
@@ -95,6 +107,13 @@ def _build_review_report(review_dict: dict, trace: dict) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the full CLI workflow and return a process-style status code.
+
+    On successful deterministic review, profile, signal, review, CSV, Markdown,
+    and trace artifacts are written. When requested, the optional LLM stage
+    writes separate artifacts and records its status in the trace.
+    """
+
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
@@ -104,12 +123,15 @@ def main(argv: list[str] | None = None) -> int:
         dataset_signals = generate_dataset_signals(dataframe, policy)
         dataset_review = generate_dataset_review(policy=policy, profile=dataset_profile, signals=dataset_signals)
     except (FileNotFoundError, ValueError) as exc:
+        # These are expected user-facing failures from intake and policy loading;
+        # show concise messages instead of tracebacks.
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Artifact names are stable because tests and users rely on them.
     profile_path = output_dir / "sensitive_field_profile.json"
     signals_path = output_dir / "sensitive_field_signals.json"
     results_path = output_dir / "sensitive_field_results.json"
@@ -122,6 +144,8 @@ def main(argv: list[str] | None = None) -> int:
     results_path.write_text(json.dumps(review_dict, indent=2), encoding="utf-8")
     _write_findings_csv(findings_csv_path, review_dict)
 
+    # The trace records inputs, selected policy metadata, generated artifact
+    # paths, and optional LLM status for reproducibility.
     trace = {
         "input_path": str(args.input),
         "policy_path": str(args.policy),
@@ -158,6 +182,8 @@ def main(argv: list[str] | None = None) -> int:
     review_report_path.write_text(_build_review_report(review_dict, trace), encoding="utf-8")
 
     if args.llm_review:
+        # LLM review is a separate advisory stage over the safe deterministic
+        # payload. It never mutates the deterministic artifacts above.
         safe_payload = build_safe_payload(dataset_review, dataset_profile, dataset_signals)
         llm_result = run_llm_review(safe_payload, args.model)
         trace["llm_artifacts"] = write_llm_artifacts(output_dir, safe_payload, llm_result)

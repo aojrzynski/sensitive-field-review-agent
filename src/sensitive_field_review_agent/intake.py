@@ -1,3 +1,10 @@
+"""Dataset loading helpers for the CLI workflow.
+
+This module keeps file-format handling and intake metadata in one place so the
+rest of the review pipeline can work with a pandas DataFrame and a small,
+trace-friendly DatasetMetadata object.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,6 +15,18 @@ from sensitive_field_review_agent.models import DatasetMetadata
 
 
 def load_dataset(path: str | Path, sheet: str | None = None) -> tuple[pd.DataFrame, DatasetMetadata]:
+    """Load a CSV or Excel dataset and return it with trace metadata.
+
+    Supported formats are ``.csv``, ``.xlsx``, and ``.xlsm``. CSV inputs ignore
+    the sheet argument. Excel inputs use the requested sheet when provided; when
+    no sheet is provided, the first workbook sheet is loaded.
+
+    The returned metadata records the source path, file details, selected sheet,
+    row and column counts, and column names. Missing files, unsupported
+    extensions, missing sheets, and empty datasets raise FileNotFoundError or
+    ValueError so the CLI can display clean user-facing errors.
+    """
+
     dataset_path = Path(path)
     if not dataset_path.exists():
         raise FileNotFoundError(f"Dataset file not found: {dataset_path}")
@@ -19,6 +38,7 @@ def load_dataset(path: str | Path, sheet: str | None = None) -> tuple[pd.DataFra
     elif extension in {".xlsx", ".xlsm"}:
         if sheet is None:
             workbook = pd.ExcelFile(dataset_path)
+            # Defaulting to the first sheet mirrors common spreadsheet import behavior.
             sheet_name = str(workbook.sheet_names[0])
         else:
             workbook = pd.ExcelFile(dataset_path)

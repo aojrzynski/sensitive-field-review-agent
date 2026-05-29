@@ -1,3 +1,11 @@
+"""Load and validate human-authored YAML review policy files.
+
+The policy is the source of review levels, categories, field overrides,
+thresholds, and authority wording. This loader validates the expected YAML
+structure early and raises clear ValueError messages so policy issues fail fast
+before profiling or review artifacts are written.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,20 +23,35 @@ from sensitive_field_review_agent.models import (
 
 
 def _expect_dict(value: object, field_name: str) -> dict:
+    """Return a YAML object as a dict, or raise a field-specific error."""
+
     if not isinstance(value, dict):
         raise ValueError(f"{field_name} must be an object")
     return value
 
 
 def _parse_list(value: object, field_name: str) -> list[str]:
+    """Parse an optional YAML list field while rejecting scalar shortcuts."""
+
     if value is None:
         return []
+    # Policy list fields must be YAML lists so authors do not accidentally turn
+    # a comma-separated string into one broad keyword or question.
     if not isinstance(value, list):
         raise ValueError(f"{field_name} must be a list")
     return [str(item) for item in value]
 
 
 def load_policy(path: str | Path) -> SensitiveFieldPolicy:
+    """Load a YAML policy and validate references used by the review pipeline.
+
+    The loader accepts ``.yaml`` and ``.yml`` files. It checks required top-level
+    sections, confirms list-valued fields are lists, and verifies that category
+    defaults and field overrides reference known review levels and categories.
+    It raises FileNotFoundError or ValueError with CLI-friendly messages for
+    expected user and policy-authoring errors.
+    """
+
     policy_path = Path(path)
     if not policy_path.exists():
         raise FileNotFoundError(f"Policy file not found: {policy_path}")

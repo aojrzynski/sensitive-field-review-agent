@@ -1,3 +1,10 @@
+"""Deterministic review engine for field-level triage suggestions.
+
+The engine combines human-authored YAML policy, safe profile evidence, and
+aggregate deterministic signals. Its outputs are suggested review categories and
+levels for a human reviewer; they are not final handling decisions.
+"""
+
 from __future__ import annotations
 
 from dataclasses import asdict
@@ -18,6 +25,8 @@ _DECISION_AUTHORITY_NOTE = (
 
 
 def _profile_summary(profile: DatasetProfile) -> dict[str, dict]:
+    """Index compact profile evidence by column name for review results."""
+
     return {
         field.column_name: {
             "inferred_physical_type": field.inferred_physical_type,
@@ -34,15 +43,23 @@ def _profile_summary(profile: DatasetProfile) -> dict[str, dict]:
 
 
 def _score_category(signals: list[FieldSignal], category: str, category_order: list[str]) -> tuple[int, int, int]:
+    """Score a category by signal strength while preserving policy order ties."""
+
     supporting = [s for s in signals if s.policy_category == category]
     pattern_count = sum(1 for s in supporting if s.signal_type == "pattern_family")
+    # Pattern evidence wins over keyword-only evidence, then total evidence,
+    # then earlier policy order for deterministic tie-breaking.
     return (pattern_count, len(supporting), -category_order.index(category))
 
 
 def _evidence_for_signals(selected_signals: list[FieldSignal], category: str) -> list[FieldReviewEvidence]:
+    """Convert selected signals into ordered, human-readable evidence summaries."""
+
     evidence: list[FieldReviewEvidence] = []
     ordered_signals = sorted(
         selected_signals,
+        # Pattern summaries carry aggregate observed-value evidence, so they are
+        # shown before policy keyword summaries when both support the category.
         key=lambda signal: 0 if signal.signal_type == "pattern_family" else 1,
     )
     for signal in ordered_signals:
@@ -66,6 +83,14 @@ def generate_dataset_review(
     profile: DatasetProfile,
     signals: DatasetSignals,
 ) -> DatasetReviewResult:
+    """Create deterministic review suggestions from policy, profile, and signals.
+
+    Policy field overrides take priority over generated signals. Fields with no
+    matched signals are still represented so artifacts show complete coverage.
+    Confidence labels are deterministic summaries of evidence type: overrides,
+    pattern-supported suggestions, keyword-supported suggestions, or no signal.
+    """
+
     profile_by_name = _profile_summary(profile)
     category_order = list(policy.categories.keys())
     has_none_level = "none" in policy.review_levels
@@ -77,6 +102,8 @@ def generate_dataset_review(
         profile_summary = profile_by_name.get(column_name, {})
 
         if override is not None:
+            # Human-authored overrides are explicit policy instructions, so they
+            # bypass scoring and keep their configured category and level.
             reviewer_questions = policy.categories[override.category].reviewer_questions
             review_required = override.review_level != "none"
             evidence = [
@@ -104,6 +131,8 @@ def generate_dataset_review(
 
         matched_signals = [s for s in field_signals.signals if s.matched]
         if not matched_signals:
+            # No-signal fields remain in the result so reviewers can distinguish
+            # reviewed fields from fields omitted by accident.
             default_level = "none" if has_none_level else "low"
             results.append(
                 FieldReviewResult(
@@ -156,4 +185,6 @@ def generate_dataset_review(
 
 
 def dataset_review_to_dict(review: DatasetReviewResult) -> dict:
+    """Convert a dataset review result into JSON-ready dictionaries."""
+
     return asdict(review)

@@ -1,36 +1,114 @@
-# architecture
+# Architecture
 
-The default implementation path is deterministic: intake, policy loading, safe profiling, deterministic signal generation, and deterministic review suggestion generation.
+Sensitive Field Review Agent is a deterministic-first review workflow for tabular files. The default path runs locally and does not require an LLM or API key.
 
-Default runtime flow:
-- Parse CLI arguments.
-- Load input dataset (CSV/XLSX/XLSM) with deterministic validation.
-- Load YAML sensitive-field policy with structural validation.
-- Generate deterministic safe field profiles from the dataset.
-- Generate deterministic field signals from policy keywords and pattern families.
-- Generate deterministic review suggestions from policy + profile + signals + overrides.
-- Write `sensitive_field_profile.json`.
-- Write `sensitive_field_signals.json`.
-- Write `sensitive_field_results.json`.
-- Write `sensitive_field_findings.csv`.
-- Write `sensitive_field_review_report.md`.
-- Write `sensitive_field_trace.json` with dataset metadata, policy metadata, artifact metadata, and LLM request/status metadata.
+```text
+Dataset intake
+  -> Policy loading
+  -> Safe profiling
+  -> Deterministic signal generation
+  -> Deterministic review suggestion generation
+  -> Artifact writing
+  -> Optional active LLM review over safe deterministic evidence
+```
 
-## Active LLM review over safe deterministic evidence
+## 1. Dataset intake
 
-When `--llm-review` is passed, the CLI adds a bounded advisory LLM review stage after deterministic artifacts have been prepared:
-- Build `llm_safe_field_summary.json` from deterministic review results, safe profile summaries, deterministic signal summaries, policy metadata, reviewer questions, and authority boundary notes.
-- If `OPENAI_API_KEY` is missing, write skipped/fallback LLM artifacts and exit 0 after deterministic outputs are generated.
-- If configured, call the LLM with only the safe deterministic payload.
-- Write `llm_field_review.json` and `llm_field_review.md`.
-- Update `sensitive_field_trace.json` with `llm_review_status` and `llm_artifacts` metadata.
+The CLI accepts an input dataset path and optional Excel sheet name.
 
-The LLM output does not modify `sensitive_field_results.json`, `sensitive_field_findings.csv`, or `sensitive_field_review_report.md`. Deterministic review results remain the traceable evidence foundation.
+Supported input formats:
 
-Boundary reminders:
-- These are suggested review outputs for human triage.
-- They are not final decisions.
-- They do not provide legal or regulatory verdicts.
-- They do not determine protected-status labels for the dataset.
-- The LLM stage is advisory and non-authoritative.
-- Human reviewers make final decisions.
+- CSV (`.csv`)
+- Excel workbook (`.xlsx`)
+- macro-enabled Excel workbook (`.xlsm`)
+
+The intake stage validates that the file exists, that the extension is supported, that a requested Excel sheet exists, and that the loaded dataset has rows and columns.
+
+The stage records dataset metadata such as file name, extension, sheet name, row count, column count, and column names.
+
+## 2. Policy loading
+
+The policy loader reads a human-authored YAML policy. The policy defines the review vocabulary used by the deterministic workflow, including:
+
+- policy name and version
+- review levels
+- policy categories
+- field-name keywords
+- pattern families
+- reviewer questions
+- redaction settings
+- optional field overrides
+
+The policy is an explicit workflow input, not hidden prompt text. Policy metadata is recorded in the trace artifact.
+
+## 3. Safe profiling
+
+The profiling stage creates safe structural summaries for each field. It computes metrics such as:
+
+- null and non-null counts
+- null ratio and distinct ratio
+- inferred physical type
+- string length summaries
+- redacted example shapes
+
+The profile is designed to support review without exposing raw dataset rows.
+
+## 4. Deterministic signal generation
+
+The signal stage generates deterministic field evidence from two main sources:
+
+- policy keywords that match column names
+- configured pattern-family detectors that evaluate field values and return aggregate evidence
+
+Signals are written as explainable summaries. They are intended to show why a field may need review without storing raw matched values.
+
+## 5. Deterministic review suggestion generation
+
+The review engine combines the policy, profile, signals, and overrides to produce field-level triage suggestions.
+
+For each field, the deterministic review output can include:
+
+- whether review is suggested
+- suggested policy category
+- suggested review level
+- confidence
+- evidence summary
+- supporting signals
+- reviewer questions
+- decision authority note
+
+These are review suggestions, not final decisions.
+
+## 6. Artifact writing
+
+A successful deterministic run writes:
+
+- `sensitive_field_trace.json`
+- `sensitive_field_profile.json`
+- `sensitive_field_signals.json`
+- `sensitive_field_results.json`
+- `sensitive_field_findings.csv`
+- `sensitive_field_review_report.md`
+
+The trace artifact preserves run metadata, input and policy metadata, artifact paths, and LLM status metadata.
+
+## 7. Optional active LLM review over safe deterministic evidence
+
+The LLM path is requested explicitly with `--llm-review`. It is not part of the default deterministic path.
+
+When requested, the workflow builds `llm_safe_field_summary.json`, a safe deterministic evidence payload. The payload includes review suggestions, evidence summaries, safe profile summaries, signal summaries, reviewer questions, and authority notes. It does not include raw dataset rows.
+
+If `OPENAI_API_KEY` is missing, the LLM stage is skipped and fallback artifacts are written. The command exits 0 after deterministic artifacts are generated.
+
+If an API key and the optional LLM dependency are available, the active advisory LLM review can produce:
+
+- `llm_field_review.json`
+- `llm_field_review.md`
+
+The LLM output does not alter deterministic review results. It is advisory and non-authoritative.
+
+## Deterministic path is the authority base
+
+The deterministic artifacts are the evidence base for the workflow. The optional LLM stage can help phrase ambiguity, suggest reviewer questions, and summarize limitations, but it does not decide final handling.
+
+A human reviewer makes final decisions.

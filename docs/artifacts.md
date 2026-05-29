@@ -1,69 +1,127 @@
-# artifacts
+# Artifacts
 
-## Deterministic artifacts
-The deterministic workflow writes these artifacts on every successful run:
-- `sensitive_field_trace.json`
-- `sensitive_field_profile.json`
-- `sensitive_field_signals.json`
-- `sensitive_field_results.json`
-- `sensitive_field_findings.csv`
-- `sensitive_field_review_report.md`
+Sensitive Field Review Agent writes review artifacts to the selected `--output-dir`. The deterministic artifacts are always written when the run succeeds. LLM artifacts are written when `--llm-review` is requested.
 
-## Optional LLM artifacts
-When `--llm-review` is requested, the workflow also writes:
-- `llm_safe_field_summary.json`
-- `llm_field_review.json`
-- `llm_field_review.md`
+The artifacts are designed to support review without storing raw dataset rows in profile, signal, review, or LLM payload outputs.
 
-If no `OPENAI_API_KEY` is configured, these LLM artifacts still exist with a skipped/fallback status, and deterministic artifacts remain available.
+## Summary table
 
-## sensitive_field_trace.json
-Includes:
-- input and policy paths
-- output directory and optional sheet argument
+| Artifact | When written | Primary audience | Raw values? | Purpose |
+| --- | --- | --- | --- | --- |
+| `sensitive_field_trace.json` | Every successful run | Reviewer, developer, auditor | File paths and column names, not raw rows | Records run metadata and artifact paths |
+| `sensitive_field_profile.json` | Every successful run | Reviewer, developer | No raw rows; redacted example shapes only | Shows safe structural field profiles |
+| `sensitive_field_signals.json` | Every successful run | Reviewer, developer | No raw rows | Shows deterministic field signals |
+| `sensitive_field_results.json` | Every successful run | Reviewer, developer, automation | No raw rows | Shows structured deterministic review suggestions |
+| `sensitive_field_findings.csv` | Every successful run | Reviewer, spreadsheet workflow | No raw rows | Provides a flat triage table |
+| `sensitive_field_review_report.md` | Every successful run | Human reviewer | No raw rows | Provides a readable deterministic review report |
+| `llm_safe_field_summary.json` | When `--llm-review` is requested | Reviewer, developer | No raw rows | Shows the exact safe deterministic payload for the LLM stage |
+| `llm_field_review.json` | When `--llm-review` is requested | Reviewer, developer, automation | No raw rows | Shows structured completed, skipped, or fallback LLM output |
+| `llm_field_review.md` | When `--llm-review` is requested | Human reviewer | No raw rows | Provides readable advisory LLM review notes |
+
+## `sensitive_field_trace.json`
+
+What it contains:
+
+- input path, policy path, output directory, and optional sheet argument
 - `llm_review_requested`
-- `llm_review_status` (`not_requested`, `skipped_missing_api_key`, `completed`, or `failed_fallback`)
-- dataset metadata (file/sheet/shape/column names)
-- policy metadata (policy name/version, review levels, categories, overrides)
-- profile artifact metadata (`profile_artifacts.field_profile_path`)
-- signal artifact metadata (`signal_artifacts.field_signals_path`)
-- review artifact metadata:
-  - `review_artifacts.results_path`
-  - `review_artifacts.findings_csv_path`
-  - `review_artifacts.review_report_path`
-- LLM artifact metadata when `--llm-review` is requested:
-  - `llm_artifacts.safe_field_summary_path`
-  - `llm_artifacts.field_review_json_path`
-  - `llm_artifacts.field_review_markdown_path`
-- status set to `review_artifacts_generated`
+- `llm_review_status` such as `not_requested`, `skipped_missing_api_key`, `completed`, or fallback status
+- dataset metadata including file name, extension, sheet name, shape, and column names
+- policy metadata including policy name, version, review levels, categories, and overrides
+- paths for deterministic and optional LLM artifacts
+- final run status
 
-## sensitive_field_profile.json
-Includes deterministic safe field profile data:
-- dataset-level metadata (`row_count`, `column_count`)
-- one profile per field (`field_profiles`)
-- structural statistics (null/non-null/distinct metrics)
-- inferred physical type (string/number/boolean/datetime/unknown)
-- string length aggregates
-- safe/redacted example shapes only (no raw values)
+Who it is for:
 
-## sensitive_field_signals.json
-Includes deterministic field-level signal data:
-- dataset-level metadata (`row_count`, `column_count`)
-- one entry per field (`fields`)
-- per-field `signals` containing pattern-family signals and column-name keyword signals
-- aggregate-only evidence (counts/ratios/thresholds or matched policy keyword)
-- no raw dataset values and no row-level examples
+- reviewers who need run context
+- developers debugging a workflow
+- anyone comparing artifact sets across runs
 
-## sensitive_field_results.json
-Includes structured deterministic review suggestions:
-- field-level suggested policy category
+Raw values:
+
+- It records file paths, file metadata, and column names. It does not contain raw dataset rows.
+
+How it supports review:
+
+- It makes the run traceable and connects the input, policy, and generated artifacts.
+
+## `sensitive_field_profile.json`
+
+What it contains:
+
+- dataset row and column counts
+- one safe profile per field
+- null, non-null, and distinct metrics
+- inferred physical type such as string, number, boolean, datetime, or unknown
+- string length summaries where applicable
+- redacted example shapes
+
+Who it is for:
+
+- reviewers who want to understand field structure
+- developers checking type inference and profile behavior
+
+Raw values:
+
+- It should not contain raw rows. Examples are redacted structural shapes.
+
+How it supports review:
+
+- It explains what each field looks like structurally without exposing the underlying values.
+
+## `sensitive_field_signals.json`
+
+What it contains:
+
+- deterministic field-level signals
+- pattern-family evidence such as aggregate counts, ratios, and thresholds
+- column-name keyword evidence from the policy
+- field-level signal summaries
+
+Who it is for:
+
+- reviewers who want to understand why a field was surfaced
+- developers checking detector behavior
+
+Raw values:
+
+- It should not contain raw dataset values or row-level examples.
+
+How it supports review:
+
+- It provides the deterministic evidence used by the review engine.
+
+## `sensitive_field_results.json`
+
+What it contains:
+
+- structured deterministic review suggestions by field
+- `review_required`
+- suggested policy category
 - suggested review level
-- confidence and review-required flag
-- deterministic evidence summaries and supporting signals
-- reviewer questions and authority boundary note
+- confidence
+- evidence summary
+- supporting signals
+- reviewer questions
+- decision authority note
 
-## sensitive_field_findings.csv
-Includes a flat review table for triage:
+Who it is for:
+
+- reviewers who want detailed structured output
+- automation that needs JSON rather than Markdown or CSV
+
+Raw values:
+
+- It should not contain raw rows.
+
+How it supports review:
+
+- It connects deterministic evidence to suggested field-level triage outcomes.
+
+## `sensitive_field_findings.csv`
+
+What it contains:
+
+- one row per field
 - `column_name`
 - `review_required`
 - `suggested_policy_category`
@@ -71,37 +129,116 @@ Includes a flat review table for triage:
 - `confidence`
 - `evidence_summary`
 
-## sensitive_field_review_report.md
-Includes a human-readable triage summary:
+Who it is for:
+
+- reviewers who prefer spreadsheet-style review
+- teams that want to sort, filter, or annotate findings outside the tool
+
+Raw values:
+
+- It should not contain raw dataset rows.
+
+How it supports review:
+
+- It gives a compact triage table that can be shared with reviewers.
+
+## `sensitive_field_review_report.md`
+
+What it contains:
+
 - authority boundary
-- input/policy file names
+- input and policy file names
+- row and column counts
 - summary counts
 - fields that may require review
+- evidence summaries
 - fields with no configured deterministic signals
+- decision note
 
-## llm_safe_field_summary.json
-Includes the exact safe deterministic payload prepared for the LLM stage:
-- policy name/version and authority note
-- row/column counts
-- one safe field summary per column
+Who it is for:
+
+- human reviewers reading the run output in GitHub, a terminal, or a Markdown viewer
+
+Raw values:
+
+- It should not contain raw dataset rows.
+
+How it supports review:
+
+- It provides a readable entry point before reviewers inspect JSON or CSV artifacts.
+
+## `llm_safe_field_summary.json`
+
+What it contains:
+
+- the exact safe deterministic payload prepared for the LLM stage
+- policy name and version
+- authority note
+- row and column counts
+- field summaries
 - deterministic review suggestions and evidence summaries
-- aggregate signal/profile summaries
-- reviewer questions and decision authority notes
+- aggregate signal and profile summaries
+- reviewer questions
+- decision authority notes
 
-It does not include raw dataset rows, raw matched values, or full local filesystem paths.
+Who it is for:
 
-## llm_field_review.json
-Includes structured LLM stage output when `--llm-review` is requested:
+- reviewers who want to confirm what would be sent to the LLM
+- developers debugging the optional LLM stage
+
+Raw values:
+
+- It should not contain raw rows, raw matched values, or full local filesystem paths.
+
+How it supports review:
+
+- It makes the LLM boundary inspectable before trusting any advisory output.
+
+## `llm_field_review.json`
+
+What it contains:
+
 - `llm_review_status`
 - authority note
-- field-level advisory review notes when completed
-- skipped/fallback status when the LLM stage is unavailable
+- field-level advisory notes when completed
+- skipped/fallback status when the LLM stage does not run
+- error category for supported fallback cases
 
-## llm_field_review.md
-Includes human-readable advisory review notes when `--llm-review` is requested:
+Who it is for:
+
+- reviewers who want structured advisory notes
+- developers and automation checking whether the optional LLM stage completed or skipped
+
+Raw values:
+
+- It should not contain raw rows.
+
+How it supports review:
+
+- It records advisory output separately from deterministic review results.
+
+## `llm_field_review.md`
+
+What it contains:
+
+- active advisory LLM review status
 - authority boundary
 - reminder that deterministic outputs remain authoritative evidence
-- reminder that human reviewers make final decisions
-- completed, skipped, or fallback status
+- reminder that a human reviewer makes final decisions
+- readable field-level advisory notes when completed
 
-All review outputs are triage suggestions for human review. They are not legal or regulatory verdicts, and they do not make final decisions.
+Who it is for:
+
+- human reviewers who want a readable LLM-stage summary
+
+Raw values:
+
+- It should not contain raw rows.
+
+How it supports review:
+
+- It presents optional LLM notes without changing the deterministic review artifacts.
+
+## Review boundary
+
+All artifacts support field-level triage. They do not provide legal or compliance verdicts, and they do not replace human review.

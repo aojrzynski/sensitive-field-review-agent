@@ -243,3 +243,100 @@ categories:
     assert (out / "llm_safe_field_summary.json").exists()
     assert (out / "llm_field_review.json").exists()
     assert (out / "llm_field_review.md").exists()
+
+
+def _assert_clean_cli_error(captured, expected: str) -> None:
+    combined = captured.out + captured.err
+    assert captured.err.strip() == expected
+    assert captured.out == ""
+    assert "Traceback" not in combined
+
+
+def test_cli_missing_input_file_returns_clean_error(tmp_path, capsys):
+    policy_file = tmp_path / "policy.yaml"
+    policy_file.write_text(
+        """
+policy_name: test_policy
+review_levels:
+  high: {}
+categories:
+  contact:
+    default_review_level: high
+""".strip(),
+        encoding="utf-8",
+    )
+
+    rc = main([
+        "--input", "missing.csv",
+        "--policy", str(policy_file),
+        "--output-dir", str(tmp_path / "out"),
+    ])
+
+    assert rc == 1
+    _assert_clean_cli_error(capsys.readouterr(), "Error: Dataset file not found: missing.csv")
+
+
+def test_cli_unsupported_extension_returns_clean_error(tmp_path, capsys):
+    input_file = tmp_path / "input.txt"
+    input_file.write_text("email\na@example.com\n", encoding="utf-8")
+    policy_file = tmp_path / "policy.yaml"
+    policy_file.write_text(
+        """
+policy_name: test_policy
+review_levels:
+  high: {}
+categories:
+  contact:
+    default_review_level: high
+""".strip(),
+        encoding="utf-8",
+    )
+
+    rc = main([
+        "--input", str(input_file),
+        "--policy", str(policy_file),
+        "--output-dir", str(tmp_path / "out"),
+    ])
+
+    assert rc == 1
+    _assert_clean_cli_error(
+        capsys.readouterr(),
+        "Error: Unsupported dataset extension: .txt. Supported formats: .csv, .xlsx, .xlsm",
+    )
+
+
+def test_cli_wrong_excel_sheet_returns_clean_error(tmp_path, capsys):
+    pytest.importorskip("openpyxl")
+    import pandas as pd
+
+    input_file = tmp_path / "input.xlsx"
+    pd.DataFrame({"id": [1], "name": ["Alice"]}).to_excel(
+        input_file, sheet_name="Customers", index=False
+    )
+    policy_file = tmp_path / "policy.yaml"
+    policy_file.write_text(
+        """
+policy_name: test_policy
+review_levels:
+  high: {}
+categories:
+  contact:
+    default_review_level: high
+""".strip(),
+        encoding="utf-8",
+    )
+
+    rc = main([
+        "--input", str(input_file),
+        "--policy", str(policy_file),
+        "--output-dir", str(tmp_path / "out"),
+        "--sheet", "MissingSheet",
+    ])
+
+    assert rc == 1
+    captured = capsys.readouterr()
+    _assert_clean_cli_error(
+        captured,
+        "Error: Sheet 'MissingSheet' not found in workbook. Available sheets: ['Customers']",
+    )
+    assert "not found" in captured.err

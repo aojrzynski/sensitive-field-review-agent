@@ -67,3 +67,22 @@ def test_profile_safe_examples_are_limited_and_redacted():
         "10 Demo Street",
     ]:
         assert raw not in rendered
+
+
+def test_profile_sample_business_types_do_not_infer_phone_as_datetime():
+    dataframe = pd.DataFrame(
+        {
+            "phone": ["07111 000001", "07111 000002", "07111 000003"],
+            "date_of_birth": ["1980-01-01", "1991-02-03", "1975-12-31"],
+            "account_balance": [125.50, 0.0, 9999.99],
+            "marketing_consent": [True, False, True],
+        }
+    )
+
+    profile = profile_dataset(dataframe, max_examples_per_field=3)
+    by_name = {f.column_name: f for f in profile.field_profiles}
+
+    assert by_name["phone"].inferred_physical_type == "string"
+    assert by_name["date_of_birth"].inferred_physical_type == "datetime"
+    assert by_name["account_balance"].inferred_physical_type == "number"
+    assert by_name["marketing_consent"].inferred_physical_type == "boolean"

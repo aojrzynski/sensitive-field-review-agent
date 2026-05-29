@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 
 from sensitive_field_review_agent import __version__
@@ -22,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--policy", required=True, help="Path to policy configuration file")
     parser.add_argument("--output-dir", default="outputs/sensitive_field_review", help="Directory for output artifacts")
     parser.add_argument("--sheet", default=None, help="Optional sheet name for Excel input (.xlsx/.xlsm)")
-    parser.add_argument("--llm-review", action="store_true", help="Request optional LLM review mode (non-authoritative)")
+    parser.add_argument("--llm-review", action="store_true", help="Request active advisory LLM review over safe deterministic evidence")
     parser.add_argument("--model", default=None, help="Optional model name for active LLM review")
     parser.add_argument("--version", action="version", version=f"sensitive-field-review-agent {__version__}")
     return parser
@@ -96,11 +97,15 @@ def _build_review_report(review_dict: dict, trace: dict) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    dataframe, dataset_metadata = load_dataset(args.input, sheet=args.sheet)
-    policy = load_policy(args.policy)
-    dataset_profile = profile_dataset(dataframe, max_examples_per_field=policy.redaction.max_redacted_examples_per_field)
-    dataset_signals = generate_dataset_signals(dataframe, policy)
-    dataset_review = generate_dataset_review(policy=policy, profile=dataset_profile, signals=dataset_signals)
+    try:
+        dataframe, dataset_metadata = load_dataset(args.input, sheet=args.sheet)
+        policy = load_policy(args.policy)
+        dataset_profile = profile_dataset(dataframe, max_examples_per_field=policy.redaction.max_redacted_examples_per_field)
+        dataset_signals = generate_dataset_signals(dataframe, policy)
+        dataset_review = generate_dataset_review(policy=policy, profile=dataset_profile, signals=dataset_signals)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

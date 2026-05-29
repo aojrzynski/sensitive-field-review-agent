@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import re
 
 import pandas as pd
 from pandas.api.types import is_bool_dtype, is_datetime64_any_dtype, is_numeric_dtype
@@ -9,6 +10,9 @@ from sensitive_field_review_agent.models import DatasetProfile, FieldProfile, Sa
 
 
 _SAFE_PUNCTUATION = set("-_.@:/+()#")
+_DATE_LIKE_RE = re.compile(
+    r"^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})$"
+)
 
 
 def _infer_physical_type(series: pd.Series) -> str:
@@ -23,7 +27,16 @@ def _infer_physical_type(series: pd.Series) -> str:
     if non_null.empty:
         return "unknown"
 
-    parsed = pd.to_datetime(non_null, errors="coerce")
+    string_values = non_null.astype(str).str.strip()
+    string_values = string_values[string_values != ""]
+    if string_values.empty:
+        return "unknown"
+
+    date_like = string_values.map(lambda value: bool(_DATE_LIKE_RE.match(value)))
+    if float(date_like.mean()) < 0.9:
+        return "string"
+
+    parsed = pd.to_datetime(string_values[date_like], errors="coerce", format="mixed")
     if parsed.notna().mean() >= 0.9:
         return "datetime"
     return "string"

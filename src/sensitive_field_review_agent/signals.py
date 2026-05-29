@@ -1,3 +1,11 @@
+"""Generate deterministic aggregate signals for dataset fields.
+
+Signals connect the human-authored YAML policy to observed column names and
+aggregate value patterns. Pattern-family detectors store counts and ratios, not
+matched raw values. Signals are evidence for review suggestions, not final
+field handling decisions.
+"""
+
 from __future__ import annotations
 
 import re
@@ -15,6 +23,8 @@ from sensitive_field_review_agent.models import (
 )
 
 
+# Pattern families are intentionally simple and explainable. They indicate that
+# values resemble a configured family often enough to meet policy thresholds.
 _EMAIL_RE = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.IGNORECASE)
 _PHONE_RE = re.compile(r"^(?:\+?44|0)\s*(?:\d\s*){9,10}$")
 _UK_POSTCODE_RE = re.compile(r"^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$", re.IGNORECASE)
@@ -26,15 +36,21 @@ _SECRET_RE = re.compile(r"(?:sk_(?:live|test)_[A-Za-z0-9]{8,}|token|secret|api[_
 
 
 def _normalize_name(value: str) -> str:
+    """Normalize a column or policy keyword for deterministic matching."""
+
     normalized = value.strip().lower().replace("-", "_").replace(" ", "_")
     return re.sub(r"_+", "_", normalized)
 
 
 def _tokenize_name(value: str) -> set[str]:
+    """Split a normalized name into lowercase tokens for keyword matching."""
+
     return {token for token in re.split(r"[^a-z0-9]+", _normalize_name(value)) if token}
 
 
 def _matches_family(value: str, family: str) -> bool:
+    """Return whether one normalized value matches a configured pattern family."""
+
     if family == "email_like":
         return bool(_EMAIL_RE.match(value))
     if family == "phone_like":
@@ -54,11 +70,23 @@ def _matches_family(value: str, family: str) -> bool:
     return False
 
 
-def _pattern_signal(column_name: str, category_name: str, family: str, series: pd.Series, min_count: int, min_ratio: float) -> FieldSignal | None:
+def _pattern_signal(
+    column_name: str,
+    category_name: str,
+    family: str,
+    series: pd.Series,
+    min_count: int,
+    min_ratio: float,
+) -> FieldSignal | None:
+    """Build a pattern-family signal when aggregate policy thresholds are met."""
+
     values = [str(v).strip() for v in series.dropna().tolist() if str(v).strip()]
     checked_count = len(values)
     if checked_count == 0:
         return None
+
+    # Store only aggregate evidence. The matched values are never copied into
+    # the signal artifact or advisory LLM payload.
     matched_count = sum(1 for value in values if _matches_family(value, family))
     matched_ratio = matched_count / checked_count
     threshold_met = matched_count >= min_count and matched_ratio >= min_ratio
@@ -83,12 +111,16 @@ def _pattern_signal(column_name: str, category_name: str, family: str, series: p
 
 
 def _keyword_signal(column_name: str, category_name: str, category_policy: CategoryPolicy) -> list[FieldSignal]:
+    """Create a signal when a column name matches a policy keyword."""
+
     normalized_column = _normalize_name(column_name)
     column_tokens = _tokenize_name(column_name)
     signals: list[FieldSignal] = []
     for keyword in category_policy.name_keywords:
         normalized_keyword = _normalize_name(keyword)
         keyword_tokens = _tokenize_name(keyword)
+        # Match exact normalized names, contained phrases, or full token sets so
+        # policy authors can use readable keywords across common naming styles.
         if (
             normalized_column == normalized_keyword
             or normalized_keyword in normalized_column
@@ -110,6 +142,13 @@ def _keyword_signal(column_name: str, category_name: str, category_policy: Categ
 
 
 def generate_dataset_signals(dataframe: pd.DataFrame, policy: SensitiveFieldPolicy) -> DatasetSignals:
+    """Generate policy-driven deterministic signals for each dataset column.
+
+    Column-name keyword signals come from policy category keywords. Pattern
+    signals are emitted only when the configured count and ratio thresholds are
+    met. Every column receives a FieldSignalSet, even with no matched signals.
+    """
+
     field_signal_sets: list[FieldSignalSet] = []
     for column_name in dataframe.columns.tolist():
         column_signals: list[FieldSignal] = []
@@ -137,4 +176,6 @@ def generate_dataset_signals(dataframe: pd.DataFrame, policy: SensitiveFieldPoli
 
 
 def dataset_signals_to_dict(signals: DatasetSignals) -> dict:
+    """Convert dataset signals into JSON-ready dictionaries."""
+
     return asdict(signals)

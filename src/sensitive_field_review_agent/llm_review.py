@@ -1,3 +1,11 @@
+"""Optional advisory LLM review over deterministic safe evidence.
+
+The LLM stage is active but bounded: it receives only the safe payload built
+from deterministic artifacts, never raw rows or matched raw values. Its output
+is sanitized, written separately, and does not change deterministic profile,
+signal, or review artifacts.
+"""
+
 from __future__ import annotations
 
 import importlib.util
@@ -27,6 +35,8 @@ _BANNED_TERMS_PATTERN = re.compile(
 
 
 def _signal_summary(signals: dict) -> list[dict]:
+    """Extract matched signal evidence for the bounded LLM payload."""
+
     out: list[dict] = []
     for signal in signals.get("signals", []):
         if not signal.get("matched"):
@@ -51,6 +61,14 @@ def _signal_summary(signals: dict) -> list[dict]:
 
 
 def build_safe_payload(review: DatasetReviewResult, profile: DatasetProfile, signals: DatasetSignals) -> dict:
+    """Build the exact safe evidence bundle sent to the advisory LLM stage.
+
+    The payload is assembled from deterministic artifacts only. It includes
+    policy metadata, field review suggestions, aggregate signal evidence, and
+    profile summaries; it excludes raw rows, raw example values, and matched raw
+    values.
+    """
+
     review_dict = asdict(review)
     profile_dict = asdict(profile)
     signals_dict = asdict(signals)
@@ -61,6 +79,8 @@ def build_safe_payload(review: DatasetReviewResult, profile: DatasetProfile, sig
     for rf in review_dict["fields"]:
         col = rf["column_name"]
         p = profile_by_col.get(col, {})
+        # Keep the payload compact and bounded to deterministic summaries that
+        # already appear in local artifacts.
         fields.append(
             {
                 "column_name": col,
@@ -95,7 +115,8 @@ def build_safe_payload(review: DatasetReviewResult, profile: DatasetProfile, sig
 
 
 def sanitize_llm_output(value: Any) -> Any:
-    """Recursively remove disallowed verdict terms from LLM-produced output strings."""
+    """Recursively remove disallowed verdict terms from LLM-produced output."""
+
     if isinstance(value, str):
         return _BANNED_TERMS_PATTERN.sub("bounded review term", value).strip()
     if isinstance(value, list):
@@ -108,6 +129,8 @@ def sanitize_llm_output(value: Any) -> Any:
 
 
 def _messages(payload: dict) -> list[dict]:
+    """Create the bounded prompt for advisory review of safe evidence."""
+
     instruction = (
         "You are a review assistant for deterministic field triage. "
         "Use only provided deterministic evidence. Do not change deterministic suggestions. "
@@ -123,14 +146,26 @@ def _messages(payload: dict) -> list[dict]:
 
 
 def run_llm_review(payload: dict, model: str | None) -> dict:
+    """Run the optional advisory LLM call, returning a non-failing fallback state.
+
+    A missing API key is treated as a skipped state so deterministic artifacts can
+    still be generated. If the optional OpenAI dependency is unavailable or the
+    call fails, the function returns a fallback result and leaves deterministic
+    outputs untouched.
+    """
+
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
+        # Missing credentials are expected in local or CI runs; this is not a
+        # failure for the deterministic workflow.
         return {
             "llm_review_status": "skipped_missing_api_key",
             "authority_note": "LLM stage requested but skipped because OPENAI_API_KEY is not configured.",
             "field_reviews": [],
         }
 
+    # The OpenAI package is optional so users can run deterministic review
+    # without installing LLM dependencies.
     if importlib.util.find_spec("openai") is None:
         return {
             "llm_review_status": "failed_fallback",
@@ -158,11 +193,15 @@ def run_llm_review(payload: dict, model: str | None) -> dict:
 
 
 def write_llm_artifacts(output_dir: Path, payload: dict, llm_result: dict) -> dict:
+    """Write separate JSON and Markdown artifacts for the optional LLM stage."""
+
     safe_path = output_dir / "llm_safe_field_summary.json"
     json_path = output_dir / "llm_field_review.json"
     md_path = output_dir / "llm_field_review.md"
     sanitized_result = sanitize_llm_output(llm_result)
 
+    # Persist the safe payload alongside the result so reviewers can inspect
+    # exactly what evidence was available to the LLM.
     safe_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     json_path.write_text(json.dumps(sanitized_result, indent=2), encoding="utf-8")
 

@@ -1,3 +1,10 @@
+"""Build safe structural profiles from loaded datasets.
+
+Profiling turns each column into deterministic evidence: counts, ratios,
+conservative physical type inference, string length stats, and redacted example
+shapes. It does not keep raw values in profile artifacts or LLM payload inputs.
+"""
+
 from __future__ import annotations
 
 from dataclasses import asdict
@@ -10,12 +17,21 @@ from sensitive_field_review_agent.models import DatasetProfile, FieldProfile, Sa
 
 
 _SAFE_PUNCTUATION = set("-_.@:/+()#")
+# Keep date inference narrow: only common all-numeric date forms are candidates.
+# This avoids noisy parsing where arbitrary strings are coerced into datetimes.
 _DATE_LIKE_RE = re.compile(
     r"^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})$"
 )
 
 
 def _infer_physical_type(series: pd.Series) -> str:
+    """Infer a conservative physical type for profile evidence.
+
+    Native pandas dtypes are trusted first. Object/string columns are only
+    treated as datetimes when most non-empty values match the narrow date shape
+    and most of those candidates parse successfully.
+    """
+
     if is_bool_dtype(series):
         return "boolean"
     if is_numeric_dtype(series):
@@ -43,6 +59,8 @@ def _infer_physical_type(series: pd.Series) -> str:
 
 
 def _shape_char(char: str) -> str:
+    """Map one character to a redacted shape token."""
+
     if char.isalpha():
         return "A"
     if char.isdigit():
@@ -55,6 +73,12 @@ def _shape_char(char: str) -> str:
 
 
 def _build_shape(value: str) -> SafeExampleShape:
+    """Summarize a string as counts and a generalized character shape.
+
+    The original string is read only to compute the abstraction. The returned
+    model contains lengths and character classes, not the value itself.
+    """
+
     letters = sum(1 for c in value if c.isalpha())
     digits = sum(1 for c in value if c.isdigit())
     whitespace = sum(1 for c in value if c.isspace())
@@ -72,6 +96,14 @@ def _build_shape(value: str) -> SafeExampleShape:
 
 
 def profile_dataset(dataframe: pd.DataFrame, max_examples_per_field: int) -> DatasetProfile:
+    """Create a safe profile artifact for every column in a DataFrame.
+
+    The profile includes aggregate counts and ratios for all fields. String
+    length stats and safe example shapes are included only for fields inferred
+    as strings, because number, boolean, datetime, and unknown fields already
+    have useful structural evidence without shape examples.
+    """
+
     field_profiles: list[FieldProfile] = []
     row_count = int(dataframe.shape[0])
 
@@ -122,4 +154,6 @@ def profile_dataset(dataframe: pd.DataFrame, max_examples_per_field: int) -> Dat
 
 
 def dataset_profile_to_dict(profile: DatasetProfile) -> dict:
+    """Convert a dataset profile dataclass tree into JSON-ready dictionaries."""
+
     return asdict(profile)

@@ -57,7 +57,3 @@ Each run writes artifacts that separate the review stages:
 - optional LLM payload and advisory review notes
 
 This separation makes the workflow easier to debug, audit, and explain.
-
-## Practical portfolio scope
-
-The project intentionally uses explainable detectors and a compact synthetic dataset. The goal is to show a complete, test-covered review workflow with clear boundaries, not to claim exhaustive coverage of every possible field type or policy situation.

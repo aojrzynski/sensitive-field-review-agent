@@ -98,10 +98,14 @@ Error: Dataset file not found: missing.csv
 ### Unsupported extension
 
 ```bash
+echo "hello" > bad_input.txt
+
 python -m sensitive_field_review_agent.cli \
-  --input sample_data/customers/customers_sensitive_review.txt \
+  --input bad_input.txt \
   --policy config/examples/sensitive_field_policy.yaml \
   --output-dir outputs/unsupported_extension
+
+rm -f bad_input.txt
 ```
 
 Example output:

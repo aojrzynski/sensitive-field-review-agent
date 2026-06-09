@@ -1,4 +1,4 @@
-# sensitive-field-review-agent
+# Sensitive Field Review Agent
 
 Sensitive Field Review Agent helps answer a practical question: "Which fields in this dataset may need human review before sharing, migration, analysis, or downstream use?"
 

@@ -4,6 +4,15 @@ Sensitive Field Review Agent helps answer a practical question: "Which fields in
 
 Many tabular datasets contain columns that look harmless in isolation but may require review depending on context: names, emails, phone numbers, addresses, IDs, free text, financial-like fields, tokens, and secrets. This project does not make legal or compliance decisions. It creates deterministic evidence, suggested policy categories, suggested review levels, and reviewer prompts so a human reviewer can make final decisions.
 
+> [!NOTE]
+> **Part of the Data Agent Suite.**
+> 
+> This repo is one of 10 local-first data/AI agents built around practical data workflows, deterministic evidence, bounded LLM use, and review-ready artifacts.
+> 
+> The full ordered list of agents is included near the bottom of this README.
+> 
+> See the full suite overview: [Data Agent Suite](https://aojrzynski.github.io/agents/)
+
 ## The problem
 
 Teams often need to inspect unfamiliar CSV or spreadsheet extracts before they are copied into another system, sent to a vendor, used for analysis, or attached to a ticket. That review is often inconsistent, manual, and hard to audit.
@@ -188,3 +197,22 @@ python -m pytest -q
 - [Demo walkthrough](docs/demo_walkthrough.md)
 - [Example commands](docs/example_commands.md)
 - [Roadmap](docs/roadmap.md)
+
+---
+
+> [!NOTE]
+> **Data Agent Suite**  
+> This repo is part of the **Data Agent Suite**: 10 local-first data/AI agents focused on practical data workflows, deterministic evidence, bounded LLM use, and review-ready artifacts.
+> 
+> See the full suite overview: [Data Agent Suite](https://aojrzynski.github.io/agents/)
+>
+> 1. [Data Quality Triage Agent](https://github.com/aojrzynski/data-quality-triage-agent)
+> 2. [Data Reconciliation Agent](https://github.com/aojrzynski/data-reconciliation-agent)
+> 3. [Data Dictionary Agent](https://github.com/aojrzynski/data-dictionary-agent)
+> 4. [Data Contract Review Agent](https://github.com/aojrzynski/data-contract-review-agent)
+> 5. **Sensitive Field Review Agent**
+> 6. [Data Test Suggestion Agent](https://github.com/aojrzynski/data-test-suggestion-agent)
+> 7. [Dataset Onboarding Reviewer Workflow](https://github.com/aojrzynski/dataset-onboarding-reviewer-workflow)
+> 8. [Data Quality Investigation Workflow](https://github.com/aojrzynski/data-quality-investigation-workflow)
+> 9. [Project Evidence Review Agent](https://github.com/aojrzynski/project-evidence-review-agent)
+> 10. [Data Migration Readiness Review Agent](https://github.com/aojrzynski/data-migration-readiness-review-agent)
